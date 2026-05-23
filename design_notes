@@ -1,0 +1,68 @@
+This is a Habit Tracking App that allows the user to set up Habits to keep track on. The Habits have a specific periodicity
+in which a task is derived that needs to be checked off by the user. Every check-off, as well as the information whether
+the check-off was on-time/overdue and completed/skipped, will be save as an CompletionRecord. The Habits, Tasks and
+CompletionRecords will be managed by there specific Repository and saved within an external database.
+The User should be able to do different kinds of statistical analysis with the records.
+
+Objects:
+
+Habit
+    Attributes
+        -habit_name: string
+        ~habit_id: int
+        -period: [daily, weekly, bi-weekly, monthly]
+        -start_date: datetime
+        -status: [Active, Paused]
+        ~streak: int
+    Methods
+        ~create_task(): void
+        ~recalculate_task(start_date, period): void
+        +pause(): void
+        +reactivate(): void
+        +rename(new_name: string): void
+        +change_periodicity(period: Period): void
+        +change_start_date(date: datetime): void
+
+HabitRepository
+    Methods
+        +create(habit: Habit): void
+        +update(habit: Habit): void
+        +delete(habit: Habit): void
+        +browse_all(): Habit[]
+        +find_habit_by_name(habit_name: string): Habit[]
+        +find_habit_by_id(habit_name: string): Habit
+
+Task
+    Attributes
+        -habit_name: string
+        ~habit_id: int
+        ~due_date: datetime
+        -check_out: boolean
+        -completion_status: [Pending, Completed, Skipped]
+    Methods
+        +complete(date: datetime): void
+        +skip(date: datetime): void
+        ~publish_to_record(completion_status: CompletionStatus, date: datetime): void
+        ~is_overdue(): boolean
+
+TaskRepository
+    Methods
+        ~create(task: Task): void
+        ~update(task: Task): void
+        ~delete(task: Task): void
+        +find_task_by_habit_name(habit_name: string): Task
+        +find_task_by_habit_id(habit_id: int): Task
+
+CompletionRecord
+    Attributes
+        ~habit_name: string
+        ~habit_id: int
+        ~completion_date: datetime
+        ~completion_status: CompletionStatus
+
+CompletionRecordRepository
+    Methods
+        ~add_record(record: CompletionRecord): void
+        +find_records_by_habit_name(habit_name: string): CompletionRecord[]
+        +find_records_by_habit_id(habit_id: int): CompletionRecord[]
+        ~calculate_streak(): int
