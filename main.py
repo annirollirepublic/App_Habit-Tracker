@@ -1,9 +1,40 @@
+import datetime
+
 class Habit:
     """
     Object that represents the actual habit. It contains all the crucial information about the habit, that determines the subsequent business logic.
     It is the only class object that can be instantiated by the user.
     Args: habit_name: string, period: Period, start_date: datetime (today by default)
     """
+
+    def __init__(self, habit_name, period, start_date=datetime.now()):
+        self._habit_name = habit_name
+        self._period = period
+        self._start_date = start_date
+        self._status = 'Active'
+        self.__habit_id = None
+        self.__streak = 0
+
+    def create_task(self):
+        pass
+
+    def recalculate_task(self, _start_date, _period):
+        pass
+
+    def pause(self):
+        pass
+
+    def reactivate(self):
+        pass
+
+    def rename(self, new_name):
+        pass
+
+    def change_periodicity(self, new_period):
+        pass
+
+    def change_start_date(self, new_start_date):
+        pass
 
 class HabitRepository:
     """
