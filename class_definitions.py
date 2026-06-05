@@ -17,11 +17,13 @@ import utils_datetime_helper as dt
 
 # Import traceback and logging for activity screening and debugging
 import traceback
+from exceptions import *
 # Import Logging for Bug Fixing
 import logging
 logging.basicConfig(level=logging.INFO, filename="habit-tracker.log", filemode="w", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # Set global database
+from pathlib import Path
 global_db_path = "habit-tracker-data-8.db"
 
 #========== ENUMERATION CLASSES ==========
@@ -110,7 +112,7 @@ class Habit:
         ## REPOSITORY CONNECTIONS
 
         # Connect to habit repository interface
-        self.__habit_repo = HabitRepository(self)
+        self.__habit_repo = HabitRepository()
         self.__task_repo = TaskRepository(self)
         self.__record_repo = CompletionRecordRepository(self)
 
@@ -176,7 +178,6 @@ class Habit:
         self._status = Status.PAUSED
         self.__habit_repo.update()
         self.__task_manager.delete_current_task(self)
-
 
     def reactivate(self):
         """Sets habit status to "Active" (only if it has been "Paused" before)
@@ -263,8 +264,6 @@ class Habit:
         self.__habit_repo.update()
         self.__task_manager.update_current_task(self)
 
-    # INTERACTION
-
 class Task:
     """Task is a value class containing only the attributes of the task
     and the business logic to calculate whether a task is overdue or not.
@@ -310,84 +309,267 @@ class RepositoryInterface(ABC):
 
 class HabitRepository(RepositoryInterface):
     """
-    Object that contains all the management logics of the habits and provides an interface to the database where the habit data is persisted.
-    Args: referenced Habit object, path to SQlite database
+    Object that provides an interface to the database where the habit data is persisted.
+    It inherits its basic functionalities from the abstract RepositoryInterface class
+
+    This class is not directly affected by the user and only gets called from the Habit class
+    The class takes no arguments in instantiation. However, it is mandatory, that the global_db_path is provided and valid
+
+    Note:
+        The Habit Repository class does only interact with the Habit class.
+        It has no interface to Task objects, Record objects or other Repository objects
     """
 
     #Database is the same for all Objects of Class
     __DB_PATH = global_db_path
 
-    def __init__(self, habit_reference: Habit):
-        self.habit_reference = habit_reference
+    def __init__(self):
+        """Initiates the HabitRepository object and sets up the basic attributes"""
         self.db_path = self.__DB_PATH
+        self.conn: sqlite3.Connection | None = None
+        self.__initialized = False
 
-        #Connect to database or create if not existent
-        self.conn = sqlite3.connect(self.db_path)
-        self.cursor = self.conn.cursor()
-
+    def __create_scheme(self) -> None:
+        """This private method sets up the basic layout for the habits table, if not already existent
+        It is only called from within the class"""
         self.cursor.execute(""" CREATE TABLE IF NOT EXISTS habits (
-                                    habit_name TEXT NOT NULL,
-                                    habit_id INTEGER NOT NULL,
-                                    period INTEGER NOT NULL,
-                                    start_date TEXT NOT NULL,
-                                    status TEXT NOT NULL)
-                                """)
+                                habit_name TEXT NOT NULL,
+                                habit_id INTEGER NOT NULL,
+                                period INTEGER NOT NULL,
+                                start_date TEXT NOT NULL,
+                                status TEXT NOT NULL)""")
         self.conn.commit()
+        logging.debug(f"Table created successfully")
 
-    def create(self, data=None):
-        """Creates a new habit datapoint in database with all corresponding attributes"""
+    def __connect(self) -> None:
+        """This private method tries to set up a connection with the database in accordance to the provided global_db_path"""
 
-        data = (self.habit_reference.habit_name,
-                self.habit_reference.habit_id,
-                self.habit_reference.period.value,
-                dt.dt_to_string(self.habit_reference.start_date), #converted datetime
-                self.habit_reference.status.value)
+        try:
+            logging.info(f"Connecting to database {self.db_path}")
 
-        self.cursor.execute("INSERT INTO habits VALUES (?, ?, ?, ?, ?)", data)
-        self.conn.commit()
+            # --- STEP 1 ---
+            # Check whether folder exists
+            db_folder = Path(self.db_path).parent
+            db_folder.mkdir(parents=True, exist_ok=True)
 
-    def update(self, data=None):
-        """Updates an existing habit datapoint in database with reference to the corresponding habit_id"""
-        ref_id = self.habit_reference.habit_id
+            # --- STEP 2 ---
+            # Connect to database or create if not existent
+            self.conn = sqlite3.connect(self.db_path)
+            self.cursor = self.conn.cursor()
 
-        logging.info("object type id: %s, value: %s", type(ref_id), str(ref_id))
+            # Set up scheme
+            self.__create_scheme()
 
-        data = (self.habit_reference.habit_name,
-                self.habit_reference.period.value,
-                dt.dt_to_string(self.habit_reference.start_date), #converted datetime
-                self.habit_reference.status.value)
+            # Set initialized to true
+            self.__initialized = True
+            logging.debug(f"OBJECT: Database connected successfully")
 
-        self.cursor.execute("UPDATE habits SET habit_name=?, period=?, start_date=?, status=? WHERE habit_id=?", data+(ref_id,))
-        self.conn.commit()
+        except sqlite3.Error as sql_error:
+            logging.error(f"OBJECT: Database connection failed due to SQLite Error: {sql_error}")
+            raise DatabaseConnectionError(reason="OBJECT: SQLite Error - Failed to connect to database",
+                                          original_error=sql_error)
 
-    def delete(self, data=None):
-        ref_id = self.habit_reference.habit_id
+        except Exception as unspecific_error:
+            logging.error(f"OBJECT: Database connection failed due to Unexpected Error: {unspecific_error}")
+            raise DatabaseConnectionError(reason="OBJECT: Unexpected Error - Failed to connect to database",
+                                          original_error=unspecific_error)
 
-        self.cursor.execute("DELETE FROM habits WHERE habit_id=?", (ref_id,))
-        self.conn.commit()
-
-    def get_largest_id(self):
-        """Derive the largest id from the database"""
-        # Get all IDs as list
-        self.cursor.execute("SELECT habit_id FROM habits")
-        id_tuple = self.cursor.fetchall()
-        self.conn.commit()
-
-        # Get maximum value, return 0 if not entry is available
-        id_list = [id_entry[0] for id_entry in id_tuple]
-        return max(id_list, default=0)
-
-    def check_for_duplicates(self):
+    def __duplicate_naming(self, habit: Habit) -> int:
         """Checks whether a habit with the same name has already been created"""
-        input_name = self.habit_reference.habit_name
 
-        # Check for same name in database as input name, case-sensitive
-        self.cursor.execute("SELECT * FROM habits WHERE LOWER(habit_name)=?", (input_name.lower(),))
-        duplicates_tuple = self.cursor.fetchall()
-        self.conn.commit()
+        if not self.__initialized:
+            self.__connect()
 
-        duplicates_list = [duplicate[0] for duplicate in duplicates_tuple]
-        return duplicates_list
+        input_name = habit.habit_name
+
+        try:
+            self.cursor.execute("SELECT * FROM habits WHERE LOWER(habit_name)=?", (input_name.lower(),))
+            duplicates_tuple = self.cursor.fetchall()
+            duplicates_list = [duplicate[0] for duplicate in duplicates_tuple]
+            return len(duplicates_list)
+
+        except sqlite3.Error as sql_error:
+            logging.error(
+                f"Could not get information on duplicate naming \"{habit.habit_name.lower()}\" due to SQLite Error: {sql_error}")
+            raise DatabaseFetchDataError(reason="SQLite Error - Failed to check for duplicate naming",
+                                      original_error=sql_error)
+        except Exception as unspecific_error:
+            logging.error(
+                f"Could not get information on duplicate naming \"{habit.habit_name.lower()}\" due to Unexpected Error: {unspecific_error}")
+            raise DatabaseFetchDataError(reason="Unexpected Error - Failed to check for duplicate naming",
+                                      original_error=unspecific_error)
+
+        finally:
+            if self.conn:
+                self.conn.close()
+
+    def create(self, habit: Habit) -> None :
+        """Creates a new habit datapoint in database with all corresponding attributes.
+        Before a new habit datapoint is created is checked whether a habit with the same name already exists in the database (case-sensitive)
+
+        Args:
+            habit (Habit): New habit for which a datapoint should be created
+        """
+
+        if not self.__initialized:
+            self.__connect()
+
+        data = (habit.habit_name,
+                habit.habit_id,
+                habit.period.value,
+                dt.dt_to_string(habit.start_date), #converted datetime
+                habit.status.value)
+
+        if self.__duplicate_naming(habit) >= 1:
+            try:
+                self.cursor.execute("INSERT INTO habits VALUES (?, ?, ?, ?, ?)", data)
+                self.conn.commit()
+                logging.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) created successfully\"")
+
+            except sqlite3.Error as sql_error:
+                logging.error(f"Creation of datapoint for Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to SQLite Error: {sql_error}")
+                raise DatabaseUpdateError(reason="SQLite Error - Failed to create datapoint in database",
+                                              original_error=sql_error)
+            except Exception as unspecific_error:
+                logging.error(f"Creation of datapoint for Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to Unexpected Error: {unspecific_error}")
+                raise DatabaseUpdateError(reason="Unexpected Error - Failed to create datapoint for Habit in database",
+                                          original_error=unspecific_error)
+            finally:
+                if self.conn:
+                    self.conn.close()
+        else:
+            logging.debug(f"Habit \"{habit.habit_name}\" already exists in database")
+            raise DuplicateHabitError(habit_name=habit.habit_name)
+
+    def update(self, habit: Habit) -> None:
+        """Updates an existing habit datapoint in database with reference to the corresponding habit_id
+        Before a habit datapoint is updated is checked whether a habit with the same name already exists in the database (case-sensitive)
+
+        Args:
+            habit (Habit): Habit with updated information (ID is persistent).
+        """
+
+        if not self.__initialized:
+            self.__connect()
+
+        ref_id = habit.habit_id
+
+        data = (habit.habit_name,
+                habit.period.value,
+                dt.dt_to_string(habit.start_date), #converted datetime
+                habit.status.value)
+
+        if self.__duplicate_naming(habit) > 1:
+            try:
+                self.cursor.execute("UPDATE habits SET habit_name=?, period=?, start_date=?, status=? WHERE habit_id=?", data+(ref_id,))
+                self.conn.commit()
+                logging.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) updated successfully\"")
+
+            except sqlite3.Error as sql_error:
+                logging.error(f"Update of Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to SQLite Error: {sql_error}")
+                raise DatabaseUpdateError(reason="SQLite Error - Failed to update datapoint in database",
+                                              original_error=sql_error)
+            except Exception as unspecific_error:
+                logging.error(f"Update of Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to Unexpected Error: {unspecific_error}")
+                raise DatabaseUpdateError(reason="Unexpected Error - Failed to update datapoint in database",
+                                          original_error=unspecific_error)
+            finally:
+                if self.conn:
+                    self.conn.close()
+        else:
+            logging.debug(f"Habit \"{habit.habit_name}\" already exists in database")
+            raise DuplicateHabitError(habit_name=habit.habit_name)
+
+    def delete(self, habit: Habit) -> None:
+        """Deletes an existing datapoint in database with reference to the corresponding habit_id
+
+        Args:
+            habit (Habit): Habit that should be deleted from database.
+        """
+
+        if not self.__initialized:
+            self.__connect()
+
+        ref_id = habit.habit_id
+
+        try:
+            self.cursor.execute("DELETE FROM habits WHERE habit_id=?", (ref_id,))
+            self.conn.commit()
+            logging.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) deleted successfully\"")
+
+        except sqlite3.Error as sql_error:
+            logging.error(f"Deletion of Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to SQLite Error: {sql_error}")
+            raise DatabaseUpdateError(reason="SQLite Error - Failed to delete datapoint from database",
+                                          original_error=sql_error)
+        except Exception as unspecific_error:
+            logging.error(f"Deletion of Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to Unexpected Error: {unspecific_error}")
+            raise DatabaseUpdateError(reason="Unexpected Error - Failed to delete datapoint from database",
+                                      original_error=unspecific_error)
+        finally:
+            if self.conn:
+                self.conn.close()
+
+    @classmethod
+    def __cls_connect(cls):
+        """This private method tries to set up a connection with the database in accordance to the provided global_db_path"""
+
+        try:
+            logging.info(f"CLASS: Connecting to database {cls.__DB_PATH}")
+
+            # --- STEP 1 ---
+            # Check whether folder exists
+            db_folder = Path(cls.__DB_PATH).parent
+            db_folder.mkdir(parents=True, exist_ok=True)
+
+            # --- STEP 2 ---
+            # Connect to database
+            conn = sqlite3.connect(cls.__DB_PATH)
+            cursor = conn.cursor()
+
+            logging.debug(f"CLASS: Database connected successfully")
+            return conn, cursor
+
+        except sqlite3.Error as sql_error:
+            logging.error(f"CLASS: Database connection failed due to SQLite Error: {sql_error}")
+            raise DatabaseConnectionError(reason="CLASS: SQLite Error - Failed to connect to database",
+                                          original_error=sql_error)
+
+        except Exception as unspecific_error:
+            logging.error(f"CLASS: Database connection failed due to Unexpected Error: {unspecific_error}")
+            raise DatabaseConnectionError(reason="CLASS: Unexpected Error - Failed to connect to database",
+                                          original_error=unspecific_error)
+
+    @classmethod
+    def get_largest_id(cls) -> int:
+        """Derives the largest id from the database"""
+
+        # Start connection
+        conn, cursor = cls.__cls_connect()
+
+        try:
+            # Get all IDs as list
+            cursor.execute("SELECT habit_id FROM habits")
+            id_tuple = cursor.fetchall()
+            logging.debug(f"CLASS: Load largest id from database successfully")
+
+            # Get maximum value, return 0 if not entry is available
+            id_list = [id_entry[0] for id_entry in id_tuple]
+            return max(id_list, default=0)
+
+        except sqlite3.Error as sql_error:
+            logging.error(f"CLASS: Could not fetch id from database due to SQLite Error: {sql_error}")
+            raise DatabaseFetchDataError(reason="CLASS: SQLite Error - Failed to fetch data from database",
+                                          original_error=sql_error)
+
+        except Exception as unspecific_error:
+            logging.error(f"CLASS: Could not fetch id from database due to Unexpected Error: {unspecific_error}")
+            raise DatabaseFetchDataError(reason="CLASS: Unexpected Error - Failed to fetch data from database",
+                                          original_error=unspecific_error)
+
+        finally:
+            if conn:
+                conn.close()
+                logging.debug(f"CLASS: Connection closed")
 
     @classmethod
     def find_by_habit_id(cls, input_id: int):
