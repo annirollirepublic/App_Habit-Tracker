@@ -108,23 +108,17 @@ class Habit:
         self._habit_id = None
         self._streak = None
 
-        ## REPOSITORY CONNECTIONS
+        ## REPOSITORY CONNECTION
 
         # Connect to habit repository interface
         self.__habit_repo = HabitRepository()
-        self.__task_repo = TaskRepository(self)
-        self.__record_repo = CompletionRecordRepository(self)
 
-        # Create habit entry
-        self._habit_id = self.__habit_repo.get_largest_id() + 1
-        self.__habit_repo.create(self)
+        # Check whether input is duplicate - Creation will be blocked if is duplicate
+        if self.__habit_repo.duplicate_naming(self) > 0:
+            raise DuplicateHabitError(habit_name=self._habit_name)
 
-        ## TASK MANAGER (for further task related methods)
-
-        # Initiate Task Manager
-        self.__task_manager = TaskManager(self.__task_repo, self.__record_repo)
-        # Create first task entry
-        self.__task_manager.create_first_task(self)
+        # If duplicate check is passed, save to repository and pass to manager
+        self.__save_habit()
 
     @property
     def habit_name(self):
@@ -141,6 +135,32 @@ class Habit:
     @property
     def status(self):
         return self._status
+
+    # INTERNAL CALLS
+
+    def __save_habit(self) -> None:
+
+        try:
+            # Create habit entry
+            self._habit_id = self.__habit_repo.get_largest_id() + 1
+            self.__habit_repo.create(self)
+
+            # Create interfaces to other repositories (to hand over to task manager)
+            self.__task_repo = TaskRepository(self)
+            self.__record_repo = CompletionRecordRepository(self)
+
+            ## TASK MANAGER (for further task related methods)
+
+            # Initiate Task Manager
+            self.__task_manager = TaskManager(self.__task_repo, self.__record_repo)
+            # Create first task entry
+            self.__task_manager.create_first_task(self)
+
+        # logging.info(f"Habit '{self.habit_name}' (ID {self._habit_id}) erfolgreich angelegt.")
+
+        except Exception as e:
+            # logging.error(f"Fehler beim Anlegen von Habit {self.habit_name}: {e}")
+            raise e
 
     # INTERACTION
 
@@ -354,7 +374,7 @@ class HabitRepository(RepositoryInterface):
         self.conn.commit()
         logging.debug(f"Database connection established to {self.db_path}")
 
-    def __duplicate_naming(self, habit: Habit) -> int:
+    def duplicate_naming(self, habit: Habit) -> int:
         """Checks whether a habit with the same name has already been created"""
 
         self.__ensure_connection()
@@ -406,7 +426,7 @@ class HabitRepository(RepositoryInterface):
                 dt.dt_to_string(habit.start_date), #converted datetime
                 habit.status.value)
 
-        if self.__duplicate_naming(habit) == 0:
+        if self.duplicate_naming(habit) == 0:
             try:
                 self.cursor.execute("INSERT INTO habits VALUES (?, ?, ?, ?, ?)", data)
                 self.conn.commit()
@@ -435,7 +455,7 @@ class HabitRepository(RepositoryInterface):
                 dt.dt_to_string(habit.start_date), #converted datetime
                 habit.status.value)
 
-        if self.__duplicate_naming(habit) > 1:
+        if self.duplicate_naming(habit) > 1:
             print("That is a duplicate!")
 
         try:
