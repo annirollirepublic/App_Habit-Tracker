@@ -325,7 +325,7 @@ class HabitRepository(RepositoryInterface):
     def __init__(self):
         """Initiates the HabitRepository object and sets up the basic attributes"""
         self.db_path = self.__DB_PATH
-        # self.conn: sqlite3.Connection | None = None
+        self.conn: sqlite3.Connection | None = None
 
     def __ensure_connection(self) -> None:
         """Ensures that the connection to the database is valid"""
@@ -367,16 +367,10 @@ class HabitRepository(RepositoryInterface):
             duplicates_list = [duplicate[0] for duplicate in duplicates_tuple]
             return len(duplicates_list)
 
-        except sqlite3.Error as sql_error:
-            logging.error(
-                f"Could not get information on duplicate naming \"{habit.habit_name.lower()}\" due to SQLite Error: {sql_error}")
-            raise DatabaseFetchDataError(reason="SQLite Error - Failed to check for duplicate naming",
-                                      original_error=sql_error)
-        except Exception as unspecific_error:
-            logging.error(
-                f"Could not get information on duplicate naming \"{habit.habit_name.lower()}\" due to Unexpected Error: {unspecific_error}")
-            raise DatabaseFetchDataError(reason="Unexpected Error - Failed to check for duplicate naming",
-                                      original_error=unspecific_error)
+        except Exception as e:
+            msg = f"Error while finding duplicates:  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseFetchDataError(reason=msg, original_error=e)
 
     def get_largest_id(self) -> int:
 
@@ -386,21 +380,15 @@ class HabitRepository(RepositoryInterface):
             # Get all IDs as list
             self.cursor.execute("SELECT habit_id FROM habits")
             id_tuple = self.cursor.fetchall()
-            logging.debug(f"Load largest ID from database.")
 
             # Get maximum value, return 0 if not entry is available
             id_list = [id_entry[0] for id_entry in id_tuple]
             return max(id_list, default=0)
 
-        except sqlite3.Error as sql_error:
-            logging.critical(f"SQLite error while fetching data:  {type(sql_error).__name__} | {sql_error}")
-            raise DatabaseFetchDataError(reason=f"SQLite error message: {sql_error}",
-                                      original_error=sql_error)
-
-        except Exception as error:
-            logging.critical(f"Error while fetching data:  {type(error).__name__} | {error}")
-            raise DatabaseFetchDataError(reason=f"Error message: {error}",
-                                      original_error=error)
+        except Exception as e:
+            msg = f"Error while fetching largest ID:  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseFetchDataError(reason=msg, original_error=e)
 
     def create(self, habit: Habit) -> None :
         """Creates a new habit datapoint in database with all corresponding attributes.
@@ -418,23 +406,19 @@ class HabitRepository(RepositoryInterface):
                 dt.dt_to_string(habit.start_date), #converted datetime
                 habit.status.value)
 
-        print(self.__duplicate_naming(habit))
         if self.__duplicate_naming(habit) == 0:
             try:
                 self.cursor.execute("INSERT INTO habits VALUES (?, ?, ?, ?, ?)", data)
                 self.conn.commit()
                 logging.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) created successfully\"")
 
-            except sqlite3.Error as sql_error:
-                logging.critical(f"SQLite error while creation:  {type(sql_error).__name__} | {sql_error}")
-                raise DatabaseUpdateError(reason=f"SQLite error message: {sql_error}",
-                                              original_error=sql_error)
-            except Exception as error:
-                logging.critical(f"Error while creation:  {type(error).__name__} | {error}")
-                raise DatabaseUpdateError(reason=f"Error message: {error}",
-                                          original_error=error)
+            except Exception as e:
+                msg = f"Error while creation Habit \"{habit.habit_name}\" (ID:{habit.habit_id}):  {type(e).__name__} | {e}"
+                logging.critical(msg)
+                raise DatabaseUpdateError(reason=msg, original_error=e)
+
         else:
-            print("That is a duplicate!")
+            print("That is a duplicate!") #Problem duplicate Habit objects will be created (with new ID, but no entry) > Confusion
 
     def update(self, habit: Habit) -> None:
         """Updates an existing habit datapoint in database with reference to the corresponding habit_id
@@ -446,30 +430,24 @@ class HabitRepository(RepositoryInterface):
 
         self.__ensure_connection()
 
-        ref_id = habit.habit_id
-
         data = (habit.habit_name,
                 habit.period.value,
                 dt.dt_to_string(habit.start_date), #converted datetime
                 habit.status.value)
 
         if self.__duplicate_naming(habit) > 1:
-            try:
-                self.cursor.execute("UPDATE habits SET habit_name=?, period=?, start_date=?, status=? WHERE habit_id=?", data+(ref_id,))
-                self.conn.commit()
-                logging.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) updated successfully\"")
+            print("That is a duplicate!")
 
-            except sqlite3.Error as sql_error:
-                logging.error(f"Update of Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to SQLite Error: {sql_error}")
-                raise DatabaseUpdateError(reason="SQLite Error - Failed to update datapoint in database",
-                                              original_error=sql_error)
-            except Exception as unspecific_error:
-                logging.error(f"Update of Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to Unexpected Error: {unspecific_error}")
-                raise DatabaseUpdateError(reason="Unexpected Error - Failed to update datapoint in database",
-                                          original_error=unspecific_error)
-        else:
-            logging.debug(f"Habit \"{habit.habit_name}\" already exists in database")
-            raise DuplicateHabitError(habit_name=habit.habit_name)
+        try:
+            print(habit.habit_id)
+            self.cursor.execute("UPDATE habits SET habit_name=?, period=?, start_date=?, status=? WHERE habit_id=?", (*data, habit.habit_id))
+            self.conn.commit()
+            #logging.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) updated successfully\"")
+
+        except Exception as e:
+            msg = f"Error while updating Habit \"{habit.habit_name}\" (ID:{habit.habit_id}):  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseUpdateError(reason=msg, original_error=e)
 
     def delete(self, habit: Habit) -> None:
         """Deletes an existing datapoint in database with reference to the corresponding habit_id
@@ -480,21 +458,15 @@ class HabitRepository(RepositoryInterface):
 
         self.__ensure_connection()
 
-        ref_id = habit.habit_id
-
         try:
-            self.cursor.execute("DELETE FROM habits WHERE habit_id=?", (ref_id,))
+            self.cursor.execute("DELETE FROM habits WHERE habit_id=?", (habit.habit_id,))
             self.conn.commit()
             logging.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) deleted successfully\"")
 
-        except sqlite3.Error as sql_error:
-            logging.error(f"Deletion of Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to SQLite Error: {sql_error}")
-            raise DatabaseUpdateError(reason="SQLite Error - Failed to delete datapoint from database",
-                                          original_error=sql_error)
-        except Exception as unspecific_error:
-            logging.error(f"Deletion of Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to Unexpected Error: {unspecific_error}")
-            raise DatabaseUpdateError(reason="Unexpected Error - Failed to delete datapoint from database",
-                                      original_error=unspecific_error)
+        except Exception as e:
+            msg = f"Error while deleting Habit \"{habit.habit_name}\" (ID:{habit.habit_id}):  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseUpdateError(reason=msg, original_error=e)
 
     @classmethod
     def __cls_connect(cls):
