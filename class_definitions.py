@@ -15,8 +15,7 @@ from datetime import datetime, timedelta
 # Import helper to handle conversion string to datetime and vice versa
 import utils_datetime_helper as dt
 
-# Import traceback and logging for activity screening and debugging
-import traceback
+# Import exceptions and logging for activity screening and debugging
 from exceptions import *
 # Import Logging for Bug Fixing
 import logging
@@ -24,7 +23,7 @@ logging.basicConfig(level=logging.INFO, filename="habit-tracker.log", filemode="
 
 # Set global database
 from pathlib import Path
-global_db_path = "habit-tracker-data-8.db"
+global_db_path = "habit-tracker-data-9.db"
 
 #========== ENUMERATION CLASSES ==========
 
@@ -118,7 +117,7 @@ class Habit:
 
         # Create habit entry
         self._habit_id = self.__habit_repo.get_largest_id() + 1
-        self.__habit_repo.create()
+        self.__habit_repo.create(self)
 
         ## TASK MANAGER (for further task related methods)
 
@@ -176,7 +175,7 @@ class Habit:
 
         #Missing the check whether habit has been active before.
         self._status = Status.PAUSED
-        self.__habit_repo.update()
+        self.__habit_repo.update(self)
         self.__task_manager.delete_current_task(self)
 
     def reactivate(self):
@@ -190,7 +189,7 @@ class Habit:
 
         # Missing the check whether habit has been paused before.
         self._status = Status.ACTIVE
-        self.__habit_repo.update()
+        self.__habit_repo.update(self)
         # Create first task entry
         self.__task_manager.create_first_task(self)
 
@@ -206,7 +205,7 @@ class Habit:
             Right now it is unclear how to handle the corresponding records.
         """
 
-        self.__habit_repo.delete(self._habit_id)
+        self.__habit_repo.delete(self)
         self.__task_manager.delete_current_task(self)
 
     @habit_name.setter
@@ -224,7 +223,7 @@ class Habit:
             None
         """
         self._habit_name = value
-        self.__habit_repo.update()
+        self.__habit_repo.update(self)
         self.__task_manager.update_current_task(self)
 
     @period.setter
@@ -242,7 +241,7 @@ class Habit:
             None
         """
         self._period = value
-        self.__habit_repo.update()
+        self.__habit_repo.update(self)
         self.__task_manager.update_current_task(self)
 
     @start_date.setter
@@ -261,7 +260,7 @@ class Habit:
         """
 
         self._start_date = dt.string_to_dt(value)
-        self.__habit_repo.update()
+        self.__habit_repo.update(self)
         self.__task_manager.update_current_task(self)
 
 class Task:
@@ -326,59 +325,39 @@ class HabitRepository(RepositoryInterface):
     def __init__(self):
         """Initiates the HabitRepository object and sets up the basic attributes"""
         self.db_path = self.__DB_PATH
-        self.conn: sqlite3.Connection | None = None
-        self.__initialized = False
+        # self.conn: sqlite3.Connection | None = None
 
-    def __create_scheme(self) -> None:
-        """This private method sets up the basic layout for the habits table, if not already existent
-        It is only called from within the class"""
-        self.cursor.execute(""" CREATE TABLE IF NOT EXISTS habits (
-                                habit_name TEXT NOT NULL,
-                                habit_id INTEGER NOT NULL,
-                                period INTEGER NOT NULL,
-                                start_date TEXT NOT NULL,
-                                status TEXT NOT NULL)""")
+    def __ensure_connection(self) -> None:
+        """Ensures that the connection to the database is valid"""
+
+        if self.conn is not None:
+            # If no open connection available, check whether connection is live
+            try:
+                test_cursor = self.conn.cursor()
+                test_cursor.execute("SELECT 1") #If this does not through an error, the connection is live
+                return
+            except sqlite3.Error: #If it through an error, the connection must be renewed
+                self.conn = None
+                self.cursor = None
+
+        # Create new connection
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        # Ensure habits scheme
+        self.cursor.execute("""CREATE TABLE IF NOT EXISTS habits (
+                               habit_name TEXT NOT NULL,
+                               habit_id INTEGER NOT NULL,
+                               period INTEGER NOT NULL,
+                               start_date TEXT NOT NULL,
+                               status TEXT NOT NULL)""")
         self.conn.commit()
-        logging.debug(f"Table created successfully")
-
-    def __connect(self) -> None:
-        """This private method tries to set up a connection with the database in accordance to the provided global_db_path"""
-
-        try:
-            logging.info(f"Connecting to database {self.db_path}")
-
-            # --- STEP 1 ---
-            # Check whether folder exists
-            db_folder = Path(self.db_path).parent
-            db_folder.mkdir(parents=True, exist_ok=True)
-
-            # --- STEP 2 ---
-            # Connect to database or create if not existent
-            self.conn = sqlite3.connect(self.db_path)
-            self.cursor = self.conn.cursor()
-
-            # Set up scheme
-            self.__create_scheme()
-
-            # Set initialized to true
-            self.__initialized = True
-            logging.debug(f"OBJECT: Database connected successfully")
-
-        except sqlite3.Error as sql_error:
-            logging.error(f"OBJECT: Database connection failed due to SQLite Error: {sql_error}")
-            raise DatabaseConnectionError(reason="OBJECT: SQLite Error - Failed to connect to database",
-                                          original_error=sql_error)
-
-        except Exception as unspecific_error:
-            logging.error(f"OBJECT: Database connection failed due to Unexpected Error: {unspecific_error}")
-            raise DatabaseConnectionError(reason="OBJECT: Unexpected Error - Failed to connect to database",
-                                          original_error=unspecific_error)
+        logging.debug(f"Database connection established to {self.db_path}")
 
     def __duplicate_naming(self, habit: Habit) -> int:
         """Checks whether a habit with the same name has already been created"""
 
-        if not self.__initialized:
-            self.__connect()
+        self.__ensure_connection()
 
         input_name = habit.habit_name
 
@@ -399,9 +378,29 @@ class HabitRepository(RepositoryInterface):
             raise DatabaseFetchDataError(reason="Unexpected Error - Failed to check for duplicate naming",
                                       original_error=unspecific_error)
 
-        finally:
-            if self.conn:
-                self.conn.close()
+    def get_largest_id(self) -> int:
+
+        self.__ensure_connection()
+
+        try:
+            # Get all IDs as list
+            self.cursor.execute("SELECT habit_id FROM habits")
+            id_tuple = self.cursor.fetchall()
+            logging.debug(f"Load largest ID from database.")
+
+            # Get maximum value, return 0 if not entry is available
+            id_list = [id_entry[0] for id_entry in id_tuple]
+            return max(id_list, default=0)
+
+        except sqlite3.Error as sql_error:
+            logging.critical(f"SQLite error while fetching data:  {type(sql_error).__name__} | {sql_error}")
+            raise DatabaseFetchDataError(reason=f"SQLite error message: {sql_error}",
+                                      original_error=sql_error)
+
+        except Exception as error:
+            logging.critical(f"Error while fetching data:  {type(error).__name__} | {error}")
+            raise DatabaseFetchDataError(reason=f"Error message: {error}",
+                                      original_error=error)
 
     def create(self, habit: Habit) -> None :
         """Creates a new habit datapoint in database with all corresponding attributes.
@@ -411,8 +410,7 @@ class HabitRepository(RepositoryInterface):
             habit (Habit): New habit for which a datapoint should be created
         """
 
-        if not self.__initialized:
-            self.__connect()
+        self.__ensure_connection()
 
         data = (habit.habit_name,
                 habit.habit_id,
@@ -420,26 +418,23 @@ class HabitRepository(RepositoryInterface):
                 dt.dt_to_string(habit.start_date), #converted datetime
                 habit.status.value)
 
-        if self.__duplicate_naming(habit) >= 1:
+        print(self.__duplicate_naming(habit))
+        if self.__duplicate_naming(habit) == 0:
             try:
                 self.cursor.execute("INSERT INTO habits VALUES (?, ?, ?, ?, ?)", data)
                 self.conn.commit()
                 logging.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) created successfully\"")
 
             except sqlite3.Error as sql_error:
-                logging.error(f"Creation of datapoint for Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to SQLite Error: {sql_error}")
-                raise DatabaseUpdateError(reason="SQLite Error - Failed to create datapoint in database",
+                logging.critical(f"SQLite error while creation:  {type(sql_error).__name__} | {sql_error}")
+                raise DatabaseUpdateError(reason=f"SQLite error message: {sql_error}",
                                               original_error=sql_error)
-            except Exception as unspecific_error:
-                logging.error(f"Creation of datapoint for Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to Unexpected Error: {unspecific_error}")
-                raise DatabaseUpdateError(reason="Unexpected Error - Failed to create datapoint for Habit in database",
-                                          original_error=unspecific_error)
-            finally:
-                if self.conn:
-                    self.conn.close()
+            except Exception as error:
+                logging.critical(f"Error while creation:  {type(error).__name__} | {error}")
+                raise DatabaseUpdateError(reason=f"Error message: {error}",
+                                          original_error=error)
         else:
-            logging.debug(f"Habit \"{habit.habit_name}\" already exists in database")
-            raise DuplicateHabitError(habit_name=habit.habit_name)
+            print("That is a duplicate!")
 
     def update(self, habit: Habit) -> None:
         """Updates an existing habit datapoint in database with reference to the corresponding habit_id
@@ -449,8 +444,7 @@ class HabitRepository(RepositoryInterface):
             habit (Habit): Habit with updated information (ID is persistent).
         """
 
-        if not self.__initialized:
-            self.__connect()
+        self.__ensure_connection()
 
         ref_id = habit.habit_id
 
@@ -473,9 +467,6 @@ class HabitRepository(RepositoryInterface):
                 logging.error(f"Update of Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to Unexpected Error: {unspecific_error}")
                 raise DatabaseUpdateError(reason="Unexpected Error - Failed to update datapoint in database",
                                           original_error=unspecific_error)
-            finally:
-                if self.conn:
-                    self.conn.close()
         else:
             logging.debug(f"Habit \"{habit.habit_name}\" already exists in database")
             raise DuplicateHabitError(habit_name=habit.habit_name)
@@ -487,8 +478,7 @@ class HabitRepository(RepositoryInterface):
             habit (Habit): Habit that should be deleted from database.
         """
 
-        if not self.__initialized:
-            self.__connect()
+        self.__ensure_connection()
 
         ref_id = habit.habit_id
 
@@ -505,9 +495,6 @@ class HabitRepository(RepositoryInterface):
             logging.error(f"Deletion of Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) in database failed due to Unexpected Error: {unspecific_error}")
             raise DatabaseUpdateError(reason="Unexpected Error - Failed to delete datapoint from database",
                                       original_error=unspecific_error)
-        finally:
-            if self.conn:
-                self.conn.close()
 
     @classmethod
     def __cls_connect(cls):
@@ -540,38 +527,6 @@ class HabitRepository(RepositoryInterface):
                                           original_error=unspecific_error)
 
     @classmethod
-    def get_largest_id(cls) -> int:
-        """Derives the largest id from the database"""
-
-        # Start connection
-        conn, cursor = cls.__cls_connect()
-
-        try:
-            # Get all IDs as list
-            cursor.execute("SELECT habit_id FROM habits")
-            id_tuple = cursor.fetchall()
-            logging.debug(f"CLASS: Load largest id from database successfully")
-
-            # Get maximum value, return 0 if not entry is available
-            id_list = [id_entry[0] for id_entry in id_tuple]
-            return max(id_list, default=0)
-
-        except sqlite3.Error as sql_error:
-            logging.error(f"CLASS: Could not fetch id from database due to SQLite Error: {sql_error}")
-            raise DatabaseFetchDataError(reason="CLASS: SQLite Error - Failed to fetch data from database",
-                                          original_error=sql_error)
-
-        except Exception as unspecific_error:
-            logging.error(f"CLASS: Could not fetch id from database due to Unexpected Error: {unspecific_error}")
-            raise DatabaseFetchDataError(reason="CLASS: Unexpected Error - Failed to fetch data from database",
-                                          original_error=unspecific_error)
-
-        finally:
-            if conn:
-                conn.close()
-                logging.debug(f"CLASS: Connection closed")
-
-    @classmethod
     def find_by_habit_id(cls, input_id: int):
         """Searches for the given ID within the database
         Args: input_id (int): The ID to be searched for
@@ -581,26 +536,37 @@ class HabitRepository(RepositoryInterface):
         """
 
         # Start connection
-        conn = sqlite3.connect(cls.__DB_PATH)
-        cursor = conn.cursor()
+        conn, cursor = cls.__cls_connect()
 
-        # Search for ID in database
-        cursor.execute("SELECT habit_name, habit_id, period, start_date, status FROM habits WHERE habit_id=?", (input_id,))
+        try:
+            # Search for ID in database
+            cursor.execute("SELECT habit_name, habit_id, period, start_date, status FROM habits WHERE habit_id=?", (input_id,))
+            # Return search result (only one, since it is assured, that ID is unique)
+            habit_datapoint = cursor.fetchone()
 
-        # Return search result (only one, since it is assured, that ID is unique)
-        habit_datapoint = cursor.fetchone()
-        conn.commit()
+            # Bring output into readable form and return
+            if habit_datapoint:
+                logging.debug(f"CLASS: Found habit with provided ID in database")
+                return {"habit_name": habit_datapoint[0],
+                        "habit_id": habit_datapoint[1],
+                        "period": habit_datapoint[2],
+                        "start_date": habit_datapoint[3], #string format
+                        "status": habit_datapoint[4]}
+            # Return None, if there is no search result
+            else:
+                logging.debug(f"CLASS: Habit with provided ID not found in database")
+                return None
 
-        # Bring output into readable form and return
-        if habit_datapoint:
-            return {"habit_name": habit_datapoint[0],
-                    "habit_id": habit_datapoint[1],
-                    "period": habit_datapoint[2],
-                    "start_date": habit_datapoint[3], #string format
-                    "status": habit_datapoint[4]}
-        # Return None, if there is no search result
-        else:
-            return None
+        except sqlite3.Error as sql_error:
+            logging.error(f"CLASS: Could not find provided id from database due to SQLite Error: {sql_error}")
+            raise DatabaseFetchDataError(reason="CLASS: SQLite Error - Failed to fetch data from database",
+                                          original_error=sql_error)
+
+        except Exception as unspecific_error:
+            logging.error(f"CLASS: Could not find provided id from database due to Unexpected Error: {unspecific_error}")
+            raise DatabaseFetchDataError(reason="CLASS: Unexpected Error - Failed to fetch data from database",
+                                          original_error=unspecific_error)
+
 
     @classmethod
     def find_by_habit_name(cls, input_name: str):
@@ -610,28 +576,41 @@ class HabitRepository(RepositoryInterface):
             List of dict: A list of dictionaries containing the habit data (habit_name, habit_id, period, start_date, status) for all found habits with the given name.
             None: If no Habit with the given name exists
         """
+
         # Start connection
-        conn = sqlite3.connect(cls.__DB_PATH)
-        cursor = conn.cursor()
+        conn, cursor = cls.__cls_connect()
 
-        # Search for name (lowercase) in database
-        cursor.execute("SELECT habit_name, habit_id, period, start_date, status FROM habits WHERE LOWER(habit_name)=?", (input_name.lower(),)) #AttributeError: 'int' object has no attribute 'lower'
+        try:
+            # Search for name (lowercase) in database
+            cursor.execute(
+                "SELECT habit_name, habit_id, period, start_date, status FROM habits WHERE LOWER(habit_name)=?",
+                (input_name.lower(),))  # AttributeError: 'int' object has no attribute 'lower'
+            # Return search result (only one, since it is assured, that ID is unique)
+            habit_datapoint = cursor.fetchone()
 
-        # Return search results (more than one, since double naming is possible)
-        habit_datapoints = cursor.fetchall()
-        conn.commit()
+            # Bring output into readable form and return
+            if habit_datapoint:
+                logging.debug(f"CLASS: Found habit with provided name in database")
+                return {"habit_name": habit_datapoint[0],
+                        "habit_id": habit_datapoint[1],
+                        "period": habit_datapoint[2],
+                        "start_date": habit_datapoint[3],  # string format
+                        "status": habit_datapoint[4]}
+            # Return None, if there is no search result
+            else:
+                logging.debug(f"CLASS: Habit with provided name not found in database")
+                return None
 
-        # Bring output into readable form and return
-        if habit_datapoints:
-            return [{"habit_name": datapoint[0],
-                    "habit_id": datapoint[1],
-                    "period": datapoint[2],
-                    "start_date": datapoint[3], #string format
-                    "status": datapoint[4]}
-                    for datapoint in habit_datapoints]
-        # Return None, if there is no search result
-        else:
-            return None
+        except sqlite3.Error as sql_error:
+            logging.error(f"CLASS: Could not find provided name from database due to SQLite Error: {sql_error}")
+            raise DatabaseFetchDataError(reason="CLASS: SQLite Error - Failed to fetch data from database",
+                                         original_error=sql_error)
+
+        except Exception as unspecific_error:
+            logging.error(
+                f"CLASS: Could not find provided name from database due to Unexpected Error: {unspecific_error}")
+            raise DatabaseFetchDataError(reason="CLASS: Unexpected Error - Failed to fetch data from database",
+                                         original_error=unspecific_error)
 
     @classmethod
     def browse_all(cls):
@@ -642,27 +621,39 @@ class HabitRepository(RepositoryInterface):
             None: If database is empty
         """
         # Start connection
-        conn = sqlite3.connect(cls.__DB_PATH)
-        cursor = conn.cursor()
+        conn, cursor = cls.__cls_connect()
 
-        # Get all entries
-        cursor.execute("SELECT * FROM habits")
+        try:
+            # Get all entries
+            cursor.execute("SELECT * FROM habits")
 
-        # Return search results
-        habit_datapoints = cursor.fetchall()
-        conn.commit()
+            # Return search results
+            habit_datapoints = cursor.fetchall()
 
-        # Bring output into readable form and return
-        if habit_datapoints:
-            return [{"habit_name": datapoint[0],
-                     "habit_id": datapoint[1],
-                     "period": datapoint[2],
-                     "start_date": datapoint[3], #string format
-                     "status": datapoint[4]}
-                    for datapoint in habit_datapoints]
-        # Return None, if there is no search result
-        else:
-            return None
+            # Bring output into readable form and return
+            if habit_datapoints:
+                logging.debug(f"CLASS: Loaded all habits from database")
+                return [{"habit_name": datapoint[0],
+                         "habit_id": datapoint[1],
+                         "period": datapoint[2],
+                         "start_date": datapoint[3], #string format
+                         "status": datapoint[4]}
+                        for datapoint in habit_datapoints]
+            # Return None, if there is no search result
+            else:
+                logging.debug(f"CLASS: No habits in database")
+                return None
+
+        except sqlite3.Error as sql_error:
+            logging.error(f"CLASS: Could not load habits from database due to SQLite Error: {sql_error}")
+            raise DatabaseFetchDataError(reason="CLASS: SQLite Error - Failed to fetch data from database",
+                                         original_error=sql_error)
+
+        except Exception as unspecific_error:
+            logging.error(
+                f"CLASS: Could not load habits from database due to Unexpected Error: {unspecific_error}")
+            raise DatabaseFetchDataError(reason="CLASS: Unexpected Error - Failed to fetch data from database",
+                                         original_error=unspecific_error)
 
 class TaskRepository(RepositoryInterface):
     """
@@ -889,7 +880,7 @@ class TaskManager:
             loaded_task = Task(habit_id=existing_task["habit_id"],
                                 habit_name=existing_task["habit_name"],
                                 due_date=dt.string_to_dt(existing_task["due_date"]), #conversion back to datetime format
-                                completion_status=CompletionStatus(existing_task["completion_status"]))
+                                completion_status=CompletionStatus.PENDING)
 
             return loaded_task
 
