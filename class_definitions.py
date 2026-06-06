@@ -19,10 +19,9 @@ import utils_datetime_helper as dt
 from exceptions import *
 # Import Logging for Bug Fixing
 import logging
-logging.basicConfig(level=logging.INFO, filename="habit-tracker.log", filemode="w", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, filename="habit-tracker.log", filemode="a", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # Set global database
-from pathlib import Path
 global_db_path = "habit-tracker-data-9.db"
 
 #========== ENUMERATION CLASSES ==========
@@ -146,8 +145,8 @@ class Habit:
             self.__habit_repo.create(self)
 
             # Create interfaces to other repositories (to hand over to task manager)
-            self.__task_repo = TaskRepository(self)
-            self.__record_repo = CompletionRecordRepository(self)
+            self.__task_repo = TaskRepository()
+            self.__record_repo = CompletionRecordRepository()
 
             ## TASK MANAGER (for further task related methods)
 
@@ -303,6 +302,17 @@ class Task:
 #========== REPOSITORY CLASSES ==========
 
 class RepositoryInterface(ABC):
+
+    # Database is the same for all Objects of Class
+    __DB_PATH = global_db_path
+
+    def __init__(self):
+        self.db_path = self.__DB_PATH
+        self.conn: sqlite3.Connection | None = None
+
+    @abstractmethod
+    def _create_scheme(self):
+        pass
     @abstractmethod
     def create(self, data: Any):
         pass
@@ -312,19 +322,32 @@ class RepositoryInterface(ABC):
     @abstractmethod
     def delete(self, data: Any):
         pass
+    @abstractmethod
+    def find_by_habit_id(self, value:int):
+        pass
+    @abstractmethod
+    def find_by_habit_name(self, value:str):
+        pass
+    @abstractmethod
+    def browse_all(self):
+        pass
 
-    @classmethod
-    @abstractmethod
-    def find_by_habit_id(cls, value:int):
-        pass
-    @classmethod
-    @abstractmethod
-    def find_by_habit_name(cls, value:str):
-        pass
-    @classmethod
-    @abstractmethod
-    def browse_all(cls):
-        pass
+    def _ensure_connection(self):
+        if self.conn is not None:
+            # If no open connection available, check whether connection is live
+            try:
+                test_cursor = self.conn.cursor()
+                test_cursor.execute("SELECT 1")  # If this does not through an error, the connection is live
+                return
+            except sqlite3.Error:  # If it through an error, the connection must be renewed
+                self.conn = None
+                self.cursor = None
+
+        # Create new connection
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
+
+        self._create_scheme()
 
 class HabitRepository(RepositoryInterface):
     """
@@ -339,45 +362,46 @@ class HabitRepository(RepositoryInterface):
         It has no interface to Task objects, Record objects or other Repository objects
     """
 
-    #Database is the same for all Objects of Class
-    __DB_PATH = global_db_path
-
     def __init__(self):
         """Initiates the HabitRepository object and sets up the basic attributes"""
-        self.db_path = self.__DB_PATH
-        self.conn: sqlite3.Connection | None = None
+        super().__init__()
 
-    def __ensure_connection(self) -> None:
-        """Ensures that the connection to the database is valid"""
-
-        if self.conn is not None:
-            # If no open connection available, check whether connection is live
-            try:
-                test_cursor = self.conn.cursor()
-                test_cursor.execute("SELECT 1") #If this does not through an error, the connection is live
-                return
-            except sqlite3.Error: #If it through an error, the connection must be renewed
-                self.conn = None
-                self.cursor = None
-
-        # Create new connection
-        self.conn = sqlite3.connect(self.db_path)
-        self.cursor = self.conn.cursor()
+    def _create_scheme(self) -> None:
 
         # Ensure habits scheme
-        self.cursor.execute("""CREATE TABLE IF NOT EXISTS habits (
+        self.cursor.execute("""CREATE TABLE IF NOT EXISTS habits(
                                habit_name TEXT NOT NULL,
                                habit_id INTEGER NOT NULL,
                                period INTEGER NOT NULL,
                                start_date TEXT NOT NULL,
                                status TEXT NOT NULL)""")
         self.conn.commit()
-        logging.debug(f"Database connection established to {self.db_path}")
+        logging.debug(f"Database habit connection established to {self.db_path}")
+
+    def _fetch_data(self):
+
+        datapoints = self.cursor.fetchone()
+
+        if datapoints and isinstance(datapoints, tuple):
+            return [{"habit_name": datapoint[0],
+                         "habit_id": datapoint[1],
+                         "period": datapoint[2],
+                         "start_date": datapoint[3], #string format
+                         "status": datapoint[4]}
+                    for datapoint in datapoints]
+        elif datapoints and not isinstance(datapoints, tuple):
+            return {"habit_name": datapoints[0],
+                     "habit_id": datapoints[1],
+                     "period": datapoints[2],
+                     "start_date": datapoints[3],  # string format
+                     "status": datapoints[4]}
+        else:
+            return None
 
     def duplicate_naming(self, habit: Habit) -> int:
         """Checks whether a habit with the same name has already been created"""
 
-        self.__ensure_connection()
+        super()._ensure_connection()
 
         input_name = habit.habit_name
 
@@ -394,7 +418,7 @@ class HabitRepository(RepositoryInterface):
 
     def get_largest_id(self) -> int:
 
-        self.__ensure_connection()
+        super()._ensure_connection()
 
         try:
             # Get all IDs as list
@@ -418,7 +442,7 @@ class HabitRepository(RepositoryInterface):
             habit (Habit): New habit for which a datapoint should be created
         """
 
-        self.__ensure_connection()
+        super()._ensure_connection()
 
         data = (habit.habit_name,
                 habit.habit_id,
@@ -448,7 +472,7 @@ class HabitRepository(RepositoryInterface):
             habit (Habit): Habit with updated information (ID is persistent).
         """
 
-        self.__ensure_connection()
+        super()._ensure_connection()
 
         data = (habit.habit_name,
                 habit.period.value,
@@ -459,10 +483,9 @@ class HabitRepository(RepositoryInterface):
             print("That is a duplicate!")
 
         try:
-            print(habit.habit_id)
             self.cursor.execute("UPDATE habits SET habit_name=?, period=?, start_date=?, status=? WHERE habit_id=?", (*data, habit.habit_id))
             self.conn.commit()
-            #logging.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) updated successfully\"")
+            logging.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) updated successfully\"")
 
         except Exception as e:
             msg = f"Error while updating Habit \"{habit.habit_name}\" (ID:{habit.habit_id}):  {type(e).__name__} | {e}"
@@ -476,7 +499,7 @@ class HabitRepository(RepositoryInterface):
             habit (Habit): Habit that should be deleted from database.
         """
 
-        self.__ensure_connection()
+        super()._ensure_connection()
 
         try:
             self.cursor.execute("DELETE FROM habits WHERE habit_id=?", (habit.habit_id,))
@@ -488,38 +511,7 @@ class HabitRepository(RepositoryInterface):
             logging.critical(msg)
             raise DatabaseUpdateError(reason=msg, original_error=e)
 
-    @classmethod
-    def __cls_connect(cls):
-        """This private method tries to set up a connection with the database in accordance to the provided global_db_path"""
-
-        try:
-            logging.info(f"CLASS: Connecting to database {cls.__DB_PATH}")
-
-            # --- STEP 1 ---
-            # Check whether folder exists
-            db_folder = Path(cls.__DB_PATH).parent
-            db_folder.mkdir(parents=True, exist_ok=True)
-
-            # --- STEP 2 ---
-            # Connect to database
-            conn = sqlite3.connect(cls.__DB_PATH)
-            cursor = conn.cursor()
-
-            logging.debug(f"CLASS: Database connected successfully")
-            return conn, cursor
-
-        except sqlite3.Error as sql_error:
-            logging.error(f"CLASS: Database connection failed due to SQLite Error: {sql_error}")
-            raise DatabaseConnectionError(reason="CLASS: SQLite Error - Failed to connect to database",
-                                          original_error=sql_error)
-
-        except Exception as unspecific_error:
-            logging.error(f"CLASS: Database connection failed due to Unexpected Error: {unspecific_error}")
-            raise DatabaseConnectionError(reason="CLASS: Unexpected Error - Failed to connect to database",
-                                          original_error=unspecific_error)
-
-    @classmethod
-    def find_by_habit_id(cls, input_id: int):
+    def find_by_habit_id(self, input_id: int):
         """Searches for the given ID within the database
         Args: input_id (int): The ID to be searched for
         Return:
@@ -527,41 +519,21 @@ class HabitRepository(RepositoryInterface):
             None: If no Habit with the given ID exists
         """
 
-        # Start connection
-        conn, cursor = cls.__cls_connect()
+        super()._ensure_connection()
 
         try:
             # Search for ID in database
-            cursor.execute("SELECT habit_name, habit_id, period, start_date, status FROM habits WHERE habit_id=?", (input_id,))
+            self.cursor.execute("SELECT habit_name, habit_id, period, start_date, status FROM habits WHERE habit_id=?", (input_id,))
             # Return search result (only one, since it is assured, that ID is unique)
-            habit_datapoint = cursor.fetchone()
 
-            # Bring output into readable form and return
-            if habit_datapoint:
-                logging.debug(f"CLASS: Found habit with provided ID in database")
-                return {"habit_name": habit_datapoint[0],
-                        "habit_id": habit_datapoint[1],
-                        "period": habit_datapoint[2],
-                        "start_date": habit_datapoint[3], #string format
-                        "status": habit_datapoint[4]}
-            # Return None, if there is no search result
-            else:
-                logging.debug(f"CLASS: Habit with provided ID not found in database")
-                return None
+            return self._fetch_data()
 
-        except sqlite3.Error as sql_error:
-            logging.error(f"CLASS: Could not find provided id from database due to SQLite Error: {sql_error}")
-            raise DatabaseFetchDataError(reason="CLASS: SQLite Error - Failed to fetch data from database",
-                                          original_error=sql_error)
+        except Exception as e:
+            msg = f"Error while reading habit table:  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseFetchDataError(reason=msg, original_error=e)
 
-        except Exception as unspecific_error:
-            logging.error(f"CLASS: Could not find provided id from database due to Unexpected Error: {unspecific_error}")
-            raise DatabaseFetchDataError(reason="CLASS: Unexpected Error - Failed to fetch data from database",
-                                          original_error=unspecific_error)
-
-
-    @classmethod
-    def find_by_habit_name(cls, input_name: str):
+    def find_by_habit_name(self, input_name: str):
         """Searches for the given name within the database
         Args: input_name (str): The name to be searched for
         Return:
@@ -569,83 +541,41 @@ class HabitRepository(RepositoryInterface):
             None: If no Habit with the given name exists
         """
 
-        # Start connection
-        conn, cursor = cls.__cls_connect()
+        super()._ensure_connection()
 
         try:
             # Search for name (lowercase) in database
-            cursor.execute(
+            self.cursor.execute(
                 "SELECT habit_name, habit_id, period, start_date, status FROM habits WHERE LOWER(habit_name)=?",
                 (input_name.lower(),))  # AttributeError: 'int' object has no attribute 'lower'
             # Return search result (only one, since it is assured, that ID is unique)
-            habit_datapoint = cursor.fetchone()
+            return self._fetch_data()
 
-            # Bring output into readable form and return
-            if habit_datapoint:
-                logging.debug(f"CLASS: Found habit with provided name in database")
-                return {"habit_name": habit_datapoint[0],
-                        "habit_id": habit_datapoint[1],
-                        "period": habit_datapoint[2],
-                        "start_date": habit_datapoint[3],  # string format
-                        "status": habit_datapoint[4]}
-            # Return None, if there is no search result
-            else:
-                logging.debug(f"CLASS: Habit with provided name not found in database")
-                return None
+        except Exception as e:
+            msg = f"Error while reading habit table:  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseFetchDataError(reason=msg, original_error=e)
 
-        except sqlite3.Error as sql_error:
-            logging.error(f"CLASS: Could not find provided name from database due to SQLite Error: {sql_error}")
-            raise DatabaseFetchDataError(reason="CLASS: SQLite Error - Failed to fetch data from database",
-                                         original_error=sql_error)
-
-        except Exception as unspecific_error:
-            logging.error(
-                f"CLASS: Could not find provided name from database due to Unexpected Error: {unspecific_error}")
-            raise DatabaseFetchDataError(reason="CLASS: Unexpected Error - Failed to fetch data from database",
-                                         original_error=unspecific_error)
-
-    @classmethod
-    def browse_all(cls):
+    def browse_all(self):
         """Searches for the given name within the database
         Args: None
         Return:
             List of dict: A list of dictionaries containing all the habit data (habit_name, habit_id, period, start_date, status)
             None: If database is empty
         """
-        # Start connection
-        conn, cursor = cls.__cls_connect()
+
+        super()._ensure_connection()
 
         try:
             # Get all entries
-            cursor.execute("SELECT * FROM habits")
+            self.cursor.execute("SELECT * FROM habits")
 
-            # Return search results
-            habit_datapoints = cursor.fetchall()
+            return self._fetch_data()
 
-            # Bring output into readable form and return
-            if habit_datapoints:
-                logging.debug(f"CLASS: Loaded all habits from database")
-                return [{"habit_name": datapoint[0],
-                         "habit_id": datapoint[1],
-                         "period": datapoint[2],
-                         "start_date": datapoint[3], #string format
-                         "status": datapoint[4]}
-                        for datapoint in habit_datapoints]
-            # Return None, if there is no search result
-            else:
-                logging.debug(f"CLASS: No habits in database")
-                return None
-
-        except sqlite3.Error as sql_error:
-            logging.error(f"CLASS: Could not load habits from database due to SQLite Error: {sql_error}")
-            raise DatabaseFetchDataError(reason="CLASS: SQLite Error - Failed to fetch data from database",
-                                         original_error=sql_error)
-
-        except Exception as unspecific_error:
-            logging.error(
-                f"CLASS: Could not load habits from database due to Unexpected Error: {unspecific_error}")
-            raise DatabaseFetchDataError(reason="CLASS: Unexpected Error - Failed to fetch data from database",
-                                         original_error=unspecific_error)
+        except Exception as e:
+            msg = f"Error while reading habit table:  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseFetchDataError(reason=msg, original_error=e)
 
 class TaskRepository(RepositoryInterface):
     """
@@ -654,27 +584,24 @@ class TaskRepository(RepositoryInterface):
     Args: referenced Habit object, path to SQlite database
     """
 
-    # Database is the same for all Objects of Class
-    __DB_PATH = global_db_path
+    def __init__(self):
+        super().__init__()
 
-    def __init__(self, habit_reference: Habit):
-        self.habit_reference = habit_reference
-        self.db_path = self.__DB_PATH
+    def _create_scheme(self) -> None:
 
-        #Connect to database or create if not existent
-        self.conn = sqlite3.connect(self.db_path)
-        self.cursor = self.conn.cursor()
-
-        self.cursor.execute("""CREATE TABLE IF NOT EXISTS tasks (
-                                    habit_name TEXT NOT NULL,
-                                    habit_id INTEGER NOT NULL,
-                                    due_date TEXT NOT NULL,
-                                    is_overdue BOOLEAN NOT NULL,
-                                    completion_status TEXT NOT NULL)
-                                """)
+        # Ensure habits scheme
+        self.cursor.execute("""CREATE TABLE IF NOT EXISTS tasks
+                               (habit_name TEXT NOT NULL,
+                               habit_id INTEGER NOT NULL,
+                               due_date TEXT NOT NULL,
+                               is_overdue BOOLEAN NOT NULL,
+                               completion_status TEXT NOT NULL)""")
         self.conn.commit()
 
     def create(self, task: Task):
+
+        super()._ensure_connection()
+
         #Generate data
         data = (task.habit_name,
                 task.habit_id,
@@ -682,11 +609,18 @@ class TaskRepository(RepositoryInterface):
                 task.is_overdue,
                 task.completion_status.value)
 
-        self.cursor.execute("INSERT INTO tasks VALUES (?, ?, ?, ?, ?)", data)
-        self.conn.commit()
+        try:
+            self.cursor.execute("INSERT INTO tasks VALUES (?, ?, ?, ?, ?)", data)
+            self.conn.commit()
+
+        except Exception as e:
+            msg = f"Error while task creation for Habit \"{task.habit_name}\" (ID:{task.habit_id}):  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseUpdateError(reason=msg, original_error=e)
 
     def update(self, task: Task):
-        ref_id = task.habit_id
+
+        super()._ensure_connection()
 
         # Generate data
         data = (task.habit_name,
@@ -694,32 +628,45 @@ class TaskRepository(RepositoryInterface):
                 task.is_overdue,
                 task.completion_status.value)
 
-        # Update database
-        self.cursor.execute("UPDATE tasks SET habit_name=?, due_date=?, is_overdue=?, completion_status=? WHERE habit_id=?", data + (ref_id,))
-        self.conn.commit()
+        try:
+            # Update database
+            self.cursor.execute("UPDATE tasks SET habit_name=?, due_date=?, is_overdue=?, completion_status=? WHERE habit_id=?",(*data, task.habit_id))
+            self.conn.commit()
 
-    def delete(self, ref_id: int):
-        self.cursor.execute("DELETE FROM tasks WHERE habit_id=?", (ref_id,))
-        self.conn.commit()
+        except Exception as e:
+            msg = f"Error while task update for Habit \"{task.habit_name}\" (ID:{task.habit_id}):  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseUpdateError(reason=msg, original_error=e)
 
-    @classmethod
-    def find_by_habit_id(cls, input_id:int) -> list[dict[str, Any]] | None:
+    def delete(self, task: Task):
+
+        super()._ensure_connection()
+
+        try:
+            self.cursor.execute("DELETE FROM tasks WHERE habit_id=?", (task.habit_id,))
+            self.conn.commit()
+
+        except Exception as e:
+            msg = f"Error while task removal for Habit \"{task.habit_name}\" (ID:{task.habit_id}):  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseUpdateError(reason=msg, original_error=e)
+
+    def find_by_habit_id(self, input_id: int):
         """Searches for the given ID within the database
         Args: input_id (int): The ID to be searched for
         Return:
             List of dict: A list of dictionaries containing the task data (habit_name, habit_id, due_date, is_overdue, completion_status) for all found tasks with the given ID.
             None: If no Habit with the given name exists"""
-        # Start connection
-        conn = sqlite3.connect(cls.__DB_PATH)
-        cursor = conn.cursor()
+
+        super()._ensure_connection()
 
         # Search for name (lowercase) in database
-        cursor.execute("SELECT habit_name, habit_id, due_date, is_overdue, completion_status FROM tasks WHERE habit_id=?",
+        self.cursor.execute("SELECT habit_name, habit_id, due_date, is_overdue, completion_status FROM tasks WHERE habit_id=?",
                        (input_id,))
 
         # Return search results (more than one, since double naming is possible)
-        habit_datapoints = cursor.fetchall()
-        conn.commit()
+        habit_datapoints = self.cursor.fetchall()
+        self.conn.commit()
 
         # Bring output into readable form and return
         if habit_datapoints:
@@ -733,12 +680,10 @@ class TaskRepository(RepositoryInterface):
         else:
             return None
 
-    @classmethod
-    def find_by_habit_name(cls, value:str):
+    def find_by_habit_name(self, value:str):
         pass
 
-    @classmethod
-    def browse_all(cls):
+    def browse_all(self):
         pass
 
 class CompletionRecordRepository(RepositoryInterface):
@@ -751,26 +696,30 @@ class CompletionRecordRepository(RepositoryInterface):
     # Database is the same for all Objects of Class
     __DB_PATH = global_db_path
 
-    def __init__(self, reference: object):
-        self.reference = reference # Can be referenced either by Task or by Habit
-        self.db_path = self.__DB_PATH
+    def __init__(self):
+        super().__init__()
 
-        # Connect to database or create if not existent
-        self.conn = sqlite3.connect(self.db_path)
-        self.cursor = self.conn.cursor()
+    def _create_scheme(self):
 
         self.cursor.execute(""" CREATE TABLE IF NOT EXISTS completion_records (
                                 habit_name TEXT NOT NULL,
                                 habit_id INTEGER NOT NULL,
                                 completion_date TEXT NOT NULL,
-                                completion_status TEXT NOT NULL)
-                            """)
+                                completion_status TEXT NOT NULL)""")
         self.conn.commit()
 
     def create(self, data: tuple):
 
-        self.cursor.execute("INSERT INTO completion_records VALUES (?, ?, ?, ?)", data)
-        self.conn.commit()
+        super()._ensure_connection()
+
+        try:
+            self.cursor.execute("INSERT INTO completion_records VALUES (?, ?, ?, ?)", data)
+            self.conn.commit()
+
+        except Exception as e:
+            msg = f"Error while record creation for Habit \"{data[1]}\" (ID:{data[2]}):  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseUpdateError(reason=msg, original_error=e)
 
     def update(self, data=None):
         pass # Is not implemented yet, might make sense later on
