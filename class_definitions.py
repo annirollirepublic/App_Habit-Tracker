@@ -22,7 +22,7 @@ import logging
 logging.basicConfig(level=logging.INFO, filename="habit-tracker.log", filemode="a", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # Set global database
-global_db_path = "habit-tracker-data-10.db"
+global_db_path = "habit-tracker-data-12.db"
 
 #========== ENUMERATION CLASSES ==========
 
@@ -737,6 +737,8 @@ class CompletionRecordRepository(RepositoryInterface):
                                 habit_name TEXT NOT NULL,
                                 habit_id INTEGER NOT NULL,
                                 period INTEGER NOT NULL,
+                                due_date TEXT NOT NULL,
+                                was_overdue BOOLEAN NOT NULL,
                                 completion_date TEXT NOT NULL,
                                 completion_status TEXT NOT NULL)""")
         self.conn.commit()
@@ -750,8 +752,10 @@ class CompletionRecordRepository(RepositoryInterface):
             result = [{"habit_name": datapoint[i][0],
                        "habit_id": datapoint[i][1],
                        "period": datapoint[i][2],
-                       "completion_date": datapoint[i][3],  # string format
-                       "completion_status": datapoint[i][4]} for i in range(len(datapoint))]
+                       "due_date": datapoint[i][3], #string format
+                       "was_overdue": datapoint[i][4],
+                       "completion_date": datapoint[i][5],  # string format
+                       "completion_status": datapoint[i][6]} for i in range(len(datapoint))]
             return result
         else:
             return None
@@ -761,11 +765,11 @@ class CompletionRecordRepository(RepositoryInterface):
         super()._ensure_connection()
 
         try:
-            self.cursor.execute("INSERT INTO completion_records VALUES (?, ?, ?, ?, ?)", data)
+            self.cursor.execute("INSERT INTO completion_records VALUES (?, ?, ?, ?, ?, ?, ?)", data)
             self.conn.commit()
 
         except Exception as e:
-            msg = f"Error while record creation for Habit \"{data[1]}\" (ID:{data[2]}):  {type(e).__name__} | {e}"
+            msg = f"Error while record creation for Habit \"{data[0]}\" (ID:{data[1]}):  {type(e).__name__} | {e}"
             logging.critical(msg)
             raise DatabaseUpdateError(reason=msg, original_error=e)
 
@@ -785,7 +789,7 @@ class CompletionRecordRepository(RepositoryInterface):
         try:
             # Search for name (lowercase) in database
             self.cursor.execute(
-                "SELECT habit_name, habit_id, completion_date, completion_status FROM completion_records WHERE habit_id=?",
+                "SELECT habit_name, habit_id, period, due_date, was_overdue, completion_date, completion_status FROM completion_records WHERE habit_id=?",
                 (input_id,))
 
             return self._fetch_data()
@@ -802,7 +806,7 @@ class CompletionRecordRepository(RepositoryInterface):
         try:
             # Search for name (lowercase) in database
             self.cursor.execute(
-                "SELECT habit_name, habit_id, completion_date, completion_status FROM completion_records WHERE LOWER(habit_name)=?",
+                "SELECT habit_name, habit_id, period, due_date, was_overdue, completion_date, completion_status FROM completion_records WHERE LOWER(habit_name)=?",
                 (input_name.lower(),))
 
             return self._fetch_data()
@@ -827,19 +831,46 @@ class CompletionRecordRepository(RepositoryInterface):
             logging.critical(msg)
             raise DatabaseFetchDataError(reason=msg, original_error=e)
 
-    # Additional statistics
-    def calculate_streak(self, habit: Habit):
+    # --- STATISTICS ---
+
+    def calculate_streak(self, habit_id):
 
         super()._ensure_connection()
-        self.find_by_habit_id(habit.habit_id)
+        self.find_by_habit_id(habit_id)
 
-        #[(x,x,x,Skipped)]
+        # maybe sort the list according to due_date and/or completion date first?
 
-    def calculate_longest_streak(self, habit: Habit):
+        # streak = 0
+        # Take the last record -> if completion_staus == completed AND was_overdue = False >> then streak += 1 >> look at next record >> LOOP
+        # If completion_staus == skipped XOR was_overdue == True > break
+
+    def calculate_longest_streak(self, habit_id):
+        pass
+        # maybe sort the list according to due_date and/or completion date first?
+
+        # streak_list = []
+        # streak = 0
+        # counter = 0
+        # Take record[counter] -> if completion_staus == completed AND was_overdue = False >> then streak += 1 AND counter += 1 >> look at next record >> LOOP
+        # If completion_staus == skipped XOR was_overdue == True >> streak_list.append(streak), counter += 1, streak = 0
+
+    def calculate_most_consistent_habit(self):
         pass
 
-    def calculate_most_consistent_habit(self, habit: Habit):
+        # Get all unique IDs in records list
+
+        # for each ID in records list, do calculate_longest_streak(habit_id)
+        # Compare longest streaks against each other
+        # Which ID belongs to overall longest streak?
+        # Search habit datapoint according to ID
+        # return habit and longest streak for habit
+
+    def completion_rate(self, habit_id):
         pass
+
+    def habit_with_highest_completion_rate(self):
+        pass
+
 
 #========== MANAGER CLASSES ==========
 
@@ -944,6 +975,8 @@ class TaskManager:
         completion_data = (habit.habit_name,
                            habit.habit_id,
                            habit.period.value,
+                           dt.string_to_dt(self.task.due_date),
+                           self.task.is_overdue,
                            dt.dt_to_string(datetime.today()),
                            CompletionStatus.COMPLETED.value)
         self.__record_repo.create(completion_data)
@@ -972,6 +1005,8 @@ class TaskManager:
         completion_data = (habit.habit_name,
                            habit.habit_id,
                            habit.period.value,
+                           dt.dt_to_string(self.task.due_date),
+                           self.task.is_overdue,
                            dt.dt_to_string(datetime.today()),
                            CompletionStatus.SKIPPED.value)
         self.__record_repo.create(completion_data)
@@ -1021,3 +1056,5 @@ class TaskManager:
 
         self.__task_repo.update(self.task)
         return self.task
+
+#class RecordAnalyzer: ??
