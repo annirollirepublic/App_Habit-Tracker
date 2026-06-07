@@ -22,7 +22,7 @@ import logging
 logging.basicConfig(level=logging.INFO, filename="habit-tracker.log", filemode="a", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # Set global database
-global_db_path = "habit-tracker-data-9.db"
+global_db_path = "habit-tracker-data-10.db"
 
 #========== ENUMERATION CLASSES ==========
 
@@ -293,6 +293,10 @@ class Task:
         self.habit_id = habit_id
         self.due_date = due_date
         self.completion_status = completion_status
+        print(self.habit_name)
+        print(self.habit_id)
+        print(dt.dt_to_string(self.due_date))
+        print(completion_status.value)
 
     @property
     #overdue as a dynamic property, since it is recalculated every day
@@ -312,6 +316,9 @@ class RepositoryInterface(ABC):
 
     @abstractmethod
     def _create_scheme(self):
+        pass
+    @abstractmethod
+    def _fetch_data(self):
         pass
     @abstractmethod
     def create(self, data: Any):
@@ -380,21 +387,16 @@ class HabitRepository(RepositoryInterface):
 
     def _fetch_data(self):
 
-        datapoints = self.cursor.fetchone()
+        datapoint = self.cursor.fetchall()
+        print(datapoint)
 
-        if datapoints and isinstance(datapoints, tuple):
-            return [{"habit_name": datapoint[0],
-                         "habit_id": datapoint[1],
-                         "period": datapoint[2],
-                         "start_date": datapoint[3], #string format
-                         "status": datapoint[4]}
-                    for datapoint in datapoints]
-        elif datapoints and not isinstance(datapoints, tuple):
-            return {"habit_name": datapoints[0],
-                     "habit_id": datapoints[1],
-                     "period": datapoints[2],
-                     "start_date": datapoints[3],  # string format
-                     "status": datapoints[4]}
+        if datapoint and isinstance(datapoint, (tuple, list)):
+            result = [{"habit_name": datapoint[i][0],
+                       "habit_id": datapoint[i][1],
+                       "period": datapoint[i][2],
+                       "due_date": datapoint[i][3], # string format
+                       "status": datapoint[i][4]} for i in range(len(datapoint))]
+            return result
         else:
             return None
 
@@ -596,7 +598,22 @@ class TaskRepository(RepositoryInterface):
                                due_date TEXT NOT NULL,
                                is_overdue BOOLEAN NOT NULL,
                                completion_status TEXT NOT NULL)""")
-        self.conn.commit()
+        self.conn.commit()##
+
+    def _fetch_data(self):
+
+        datapoint = self.cursor.fetchall()
+        print(datapoint)
+
+        if datapoint and isinstance(datapoint, (tuple, list)):
+            result = [{"habit_name": datapoint[i][0],
+                     "habit_id": datapoint[i][1],
+                     "due_date": datapoint[i][2], # string format
+                     "is_overdue": datapoint[i][3],
+                     "completion_status": datapoint[i][4]} for i in range(len(datapoint))]
+            return result
+        else:
+            return None
 
     def create(self, task: Task):
 
@@ -660,31 +677,49 @@ class TaskRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        # Search for name (lowercase) in database
-        self.cursor.execute("SELECT habit_name, habit_id, due_date, is_overdue, completion_status FROM tasks WHERE habit_id=?",
-                       (input_id,))
+        try:
+            # Search for name (lowercase) in database
+            self.cursor.execute("SELECT habit_name, habit_id, due_date, is_overdue, completion_status FROM tasks WHERE habit_id=?",
+                           (input_id,))
 
-        # Return search results (more than one, since double naming is possible)
-        habit_datapoints = self.cursor.fetchall()
-        self.conn.commit()
+            return self._fetch_data()
 
-        # Bring output into readable form and return
-        if habit_datapoints:
-            return [{"habit_name": datapoint[0],
-                     "habit_id": datapoint[1],
-                     "due_date": datapoint[2],
-                     "is_overdue": datapoint[3],
-                     "completions_status": datapoint[4]}
-                    for datapoint in habit_datapoints]
-        # Return None, if there is no search result
-        else:
-            return None
+        except Exception as e:
+            msg = f"Error while reading task table:  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseFetchDataError(reason=msg, original_error=e)
 
     def find_by_habit_name(self, value:str):
-        pass
+
+        super()._ensure_connection()
+
+        try:
+            # Search for name (lowercase) in database
+            self.cursor.execute(
+                "SELECT habit_name, habit_id, due_date, is_overdue, completion_status FROM tasks WHERE LOWER(habit_name)=?",
+                (value.lower(),))
+
+            return self._fetch_data()
+
+        except Exception as e:
+            msg = f"Error while reading task table:  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseFetchDataError(reason=msg, original_error=e)
 
     def browse_all(self):
-        pass
+
+        super()._ensure_connection()
+
+        try:
+            # Get all entries
+            self.cursor.execute("SELECT * FROM tasks")
+
+            return self._fetch_data()
+
+        except Exception as e:
+            msg = f"Error while reading task table:  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseFetchDataError(reason=msg, original_error=e)
 
 class CompletionRecordRepository(RepositoryInterface):
     """
@@ -692,9 +727,6 @@ class CompletionRecordRepository(RepositoryInterface):
     They do contain a reference to the corresponding habit, as well as the completion date and status.
     They represent the actual historical data and cannot be changed by the user directly.
     """
-
-    # Database is the same for all Objects of Class
-    __DB_PATH = global_db_path
 
     def __init__(self):
         super().__init__()
@@ -704,16 +736,32 @@ class CompletionRecordRepository(RepositoryInterface):
         self.cursor.execute(""" CREATE TABLE IF NOT EXISTS completion_records (
                                 habit_name TEXT NOT NULL,
                                 habit_id INTEGER NOT NULL,
+                                period INTEGER NOT NULL,
                                 completion_date TEXT NOT NULL,
                                 completion_status TEXT NOT NULL)""")
         self.conn.commit()
+
+    def _fetch_data(self):
+
+        datapoint = self.cursor.fetchall()
+        print(datapoint)
+
+        if datapoint and isinstance(datapoint, (tuple, list)):
+            result = [{"habit_name": datapoint[i][0],
+                       "habit_id": datapoint[i][1],
+                       "period": datapoint[i][2],
+                       "completion_date": datapoint[i][3],  # string format
+                       "completion_status": datapoint[i][4]} for i in range(len(datapoint))]
+            return result
+        else:
+            return None
 
     def create(self, data: tuple):
 
         super()._ensure_connection()
 
         try:
-            self.cursor.execute("INSERT INTO completion_records VALUES (?, ?, ?, ?)", data)
+            self.cursor.execute("INSERT INTO completion_records VALUES (?, ?, ?, ?, ?)", data)
             self.conn.commit()
 
         except Exception as e:
@@ -730,20 +778,67 @@ class CompletionRecordRepository(RepositoryInterface):
         #self.cursor.execute("DELETE FROM completion_records WHERE habit_id=?", (ref_id,))
         #self.conn.commit()
 
-    @classmethod
-    def find_by_habit_id(cls, value:int):
-        pass
+    def find_by_habit_id(self, input_id:int):
 
-    @classmethod
-    def find_by_habit_name(cls, value:str):
-        pass
+        super()._ensure_connection()
 
-    @classmethod
-    def browse_all(cls):
-        pass
+        try:
+            # Search for name (lowercase) in database
+            self.cursor.execute(
+                "SELECT habit_name, habit_id, completion_date, completion_status FROM completion_records WHERE habit_id=?",
+                (input_id,))
+
+            return self._fetch_data()
+
+        except Exception as e:
+            msg = f"Error while reading completion_records table:  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseFetchDataError(reason=msg, original_error=e)
+
+    def find_by_habit_name(self, input_name:str):
+
+        super()._ensure_connection()
+
+        try:
+            # Search for name (lowercase) in database
+            self.cursor.execute(
+                "SELECT habit_name, habit_id, completion_date, completion_status FROM completion_records WHERE LOWER(habit_name)=?",
+                (input_name.lower(),))
+
+            return self._fetch_data()
+
+        except Exception as e:
+            msg = f"Error while reading completion_records table:  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseFetchDataError(reason=msg, original_error=e)
+
+    def browse_all(self):
+
+        super()._ensure_connection()
+
+        try:
+            # Get all entries
+            self.cursor.execute("SELECT * FROM completion_records")
+
+            return self._fetch_data()
+
+        except Exception as e:
+            msg = f"Error while reading completion_records table:  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseFetchDataError(reason=msg, original_error=e)
 
     # Additional statistics
-    def calculate_streak(self):
+    def calculate_streak(self, habit: Habit):
+
+        super()._ensure_connection()
+        self.find_by_habit_id(habit.habit_id)
+
+        #[(x,x,x,Skipped)]
+
+    def calculate_longest_streak(self, habit: Habit):
+        pass
+
+    def calculate_most_consistent_habit(self, habit: Habit):
         pass
 
 #========== MANAGER CLASSES ==========
@@ -756,6 +851,7 @@ class TaskManager:
 
         self.__task_repo = task_repo
         self.__record_repo = record_repo
+        self.task = None
 
     def __create_new_task(self, habit: Habit):
         """Handles the deletion of an old task creation of a new one with updated due_date
@@ -776,16 +872,18 @@ class TaskManager:
         next_due_date = dt.string_to_dt(ref_task[0]["due_date"]) + timedelta(days=habit.period.value)
 
         # Create new task, delete old task
-        self.__task_repo.delete(habit.habit_id)
+        self.__task_repo.delete(self.task)
 
-        next_task = Task(habit_id=habit.habit_id,
+        new_task = Task(habit_id=habit.habit_id,
                          habit_name=habit.habit_name,
                          due_date=next_due_date,
                          completion_status=CompletionStatus.PENDING)
 
-        self.__task_repo.create(next_task)
+        self.task = new_task
 
-        return next_task
+        self.__task_repo.create(self.task)
+
+        return self.task
 
     def create_first_task(self, habit: Habit):
         """Creates a new task for the given habit or instantiates an existing task from table.
@@ -811,8 +909,10 @@ class TaskManager:
                                 due_date=due_date,
                                 completion_status=CompletionStatus.PENDING)
 
-            self.__task_repo.create(initial_task)
-            return initial_task
+            self.task = initial_task
+
+            self.__task_repo.create(self.task)
+            return self.task
 
         else:
             existing_task = ref_task[0]
@@ -823,7 +923,9 @@ class TaskManager:
                                 due_date=dt.string_to_dt(existing_task["due_date"]), #conversion back to datetime format
                                 completion_status=CompletionStatus.PENDING)
 
-            return loaded_task
+            self.task = loaded_task
+
+            return self.task
 
     def complete_current_task(self, habit: Habit):
         """Processes the completion of tasks by
@@ -841,6 +943,7 @@ class TaskManager:
         # Make entry in records table
         completion_data = (habit.habit_name,
                            habit.habit_id,
+                           habit.period.value,
                            dt.dt_to_string(datetime.today()),
                            CompletionStatus.COMPLETED.value)
         self.__record_repo.create(completion_data)
@@ -848,7 +951,9 @@ class TaskManager:
         # Create new task, delete old task
         new_task = self.__create_new_task(habit)
 
-        return new_task
+        self.task = new_task
+
+        return self.task
 
     def skip_current_task(self, habit: Habit):
         """Processes the skipping of tasks by
@@ -866,6 +971,7 @@ class TaskManager:
         # Make entry in records table
         completion_data = (habit.habit_name,
                            habit.habit_id,
+                           habit.period.value,
                            dt.dt_to_string(datetime.today()),
                            CompletionStatus.SKIPPED.value)
         self.__record_repo.create(completion_data)
@@ -873,16 +979,15 @@ class TaskManager:
         # Create new task, delete old task
         new_task = self.__create_new_task(habit)
 
-        return new_task
+        self.task = new_task
 
-    def delete_current_task(self, habit: Habit):
+        return self.task
+
+    def delete_current_task(self, data = None):
         """Processes the deletion of tasks by ID
         -> Calls Task repository to remove the task from table by ID
-
-        Args:
-            habit (Habit): Habit object for which the task should be deleted
         """
-        self.__task_repo.delete(habit.habit_id)
+        self.__task_repo.delete(self.task)
 
     def update_current_task(self, habit: Habit):
         """Processes the update of a task, according to changes in the habit
@@ -912,5 +1017,7 @@ class TaskManager:
                          due_date=new_due_date,
                          completion_status=CompletionStatus.PENDING)
 
-        self.__task_repo.update(updated_task)
-        return updated_task
+        self.task = updated_task
+
+        self.__task_repo.update(self.task)
+        return self.task
