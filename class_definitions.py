@@ -116,7 +116,7 @@ class Habit:
         if self.__habit_repo.duplicate_naming(self) > 0:
             raise DuplicateHabitError(habit_name=self._habit_name)
 
-        # If duplicate check is passed, save to repository and pass to manager
+        # If duplicate check is passed, save to repository and pass to the manager
         self.__save_habit()
 
     @property
@@ -154,6 +154,9 @@ class Habit:
             self.__task_manager = TaskManager(self.__task_repo, self.__record_repo)
             # Create first task entry
             self.__task_manager.create_first_task(self)
+
+            # Initiate Record Analyzer
+            self.__record_analyzer = RecordAnalyzer(self.__record_repo)
 
         # logging.info(f"Habit '{self.habit_name}' (ID {self._habit_id}) erfolgreich angelegt.")
 
@@ -282,10 +285,35 @@ class Habit:
         self.__habit_repo.update(self)
         self.__task_manager.update_current_task(self)
 
+    def calculate_current_streak(self):
+
+        self.__record_analyzer.calculate_streak(self)
+
 class Task:
-    """Task is a value class containing only the attributes of the task
-    and the business logic to calculate whether a task is overdue or not.
-    They are managed by the TaskManager and do not intract with the task repository by themselves
+    """
+    Value object representing one actionable task for a habit.
+
+    A task stores the currently due occurrence of a habit. It contains the
+    habit reference, due date, and completion status. Task instances are
+    created and managed by TaskManager and persisted through TaskRepository.
+
+    The class does not directly communicate with the database. Its only
+    business logic is the dynamic calculation of whether the task is overdue.
+
+    Args:
+        habit_id (int): Unique identifier of the related habit.
+        habit_name (str): Name of the related habit.
+        due_date (datetime): Date and time when the task is due.
+        completion_status (CompletionStatus): Current completion state of the task.
+
+    Attributes:
+        habit_name (str): Name of the related habit.
+        habit_id (int): Unique identifier of the related habit.
+        due_date (datetime): Due date of the task.
+        completion_status (CompletionStatus): Current completion state.
+
+    Properties:
+        is_overdue (bool): True if the task due date is earlier than today, otherwise False.
     """
 
     def __init__(self, habit_id: int, habit_name: str, due_date: datetime, completion_status: CompletionStatus):
@@ -306,6 +334,28 @@ class Task:
 #========== REPOSITORY CLASSES ==========
 
 class RepositoryInterface(ABC):
+    """
+    Abstract base class for all repository implementations.
+
+    The repository interface defines the common database operations used by
+    habit, task, and completion record repositories. It centralizes the
+    database path, manages the SQLite connection, and requires subclasses to
+    implement CRUD and lookup methods.
+
+    Subclasses are responsible for creating their own database tables and
+    converting database rows into the data structures expected by the rest
+    of the application.
+
+    Attributes:
+        db_path (str): Path to the SQLite database file.
+        conn (sqlite3.Connection | None): Active SQLite database connection, if available.
+        cursor (sqlite3.Cursor): Cursor used to execute database statements after connection setup.
+
+    Notes:
+        This class should not be instantiated directly. Use one of its concrete
+        subclasses instead, such as HabitRepository, TaskRepository, or
+        CompletionRecordRepository.
+    """
 
     # Database is the same for all Objects of Class
     __DB_PATH = global_db_path
@@ -358,15 +408,23 @@ class RepositoryInterface(ABC):
 
 class HabitRepository(RepositoryInterface):
     """
-    Object that provides an interface to the database where the habit data is persisted.
-    It inherits its basic functionalities from the abstract RepositoryInterface class
+    Repository for persisting and retrieving current habits.
 
+    The habit repository provides database access for Habit objects. It creates
+    and manages the habits table, stores the currently open habit,
+    and supports lookup by habit ID or habit name.
+    
     This class is not directly affected by the user and only gets called from the Habit class
-    The class takes no arguments in instantiation. However, it is mandatory, that the global_db_path is provided and valid
+    The class takes no arguments in instantiation. However, it is mandatory that 
+    the global_db_path is provided and valid
+    
+    Inherits:
+        RepositoryInterface: Provides the shared database connection handling
+        and abstract repository method definitions.
 
     Note:
         The Habit Repository class does only interact with the Habit class.
-        It has no interface to Task objects, Record objects or other Repository objects
+        It has no interface to Task objects, Record objects, or other Repository objects
     """
 
     def __init__(self):
@@ -398,7 +456,7 @@ class HabitRepository(RepositoryInterface):
                        "status": datapoint[i][4]} for i in range(len(datapoint))]
             return result
         else:
-            return None
+            return []
 
     def duplicate_naming(self, habit: Habit) -> int:
         """Checks whether a habit with the same name has already been created"""
@@ -581,9 +639,22 @@ class HabitRepository(RepositoryInterface):
 
 class TaskRepository(RepositoryInterface):
     """
-    Object that contains all the management logics of the tasks and provides an interface to the database where the task data is persisted.
-    Tasks records will be deleted, once they are checked off and the next follow-up task will be created
-    Args: referenced Habit object, path to SQlite database
+    Repository for persisting and retrieving current habit tasks.
+
+    The task repository provides database access for Task objects. It creates
+    and manages the tasks table, stores the currently open task for each habit,
+    and supports lookup by habit ID or habit name.
+
+    Task rows are usually temporary: when a task is completed or skipped, the
+    old task is removed and a new follow-up task is created by TaskManager.
+
+    Inherits:
+        RepositoryInterface: Provides the shared database connection handling
+        and abstract repository method definitions.
+
+    Notes:
+        This repository should normally be used through TaskManager instead of
+        being called directly by user-facing code.
     """
 
     def __init__(self):
@@ -613,7 +684,7 @@ class TaskRepository(RepositoryInterface):
                      "completion_status": datapoint[i][4]} for i in range(len(datapoint))]
             return result
         else:
-            return None
+            return []
 
     def create(self, task: Task):
 
@@ -723,9 +794,24 @@ class TaskRepository(RepositoryInterface):
 
 class CompletionRecordRepository(RepositoryInterface):
     """
-    Object that is generated, when triggered by the task completion as described above.
-    They do contain a reference to the corresponding habit, as well as the completion date and status.
-    They represent the actual historical data and cannot be changed by the user directly.
+    Repository for persisted historical completion records.
+
+    Completion records represent the history of completed or skipped tasks.
+    Unlike Task objects, records are not intended to be changed directly by
+    the user. They are created when TaskManager processes a task completion
+    or skip action.
+
+    Each record stores the related habit information, the original due date,
+    whether the task was overdue, the completion date, and the final completion
+    status.
+
+    Inherits:
+        RepositoryInterface: Provides the shared database connection handling
+        and abstract repository method definitions.
+
+    Notes:
+        Completion records are used by RecordAnalyzer to calculate statistics
+        such as streaks, completion rates, and on-time completion rates.
     """
 
     def __init__(self):
@@ -758,7 +844,7 @@ class CompletionRecordRepository(RepositoryInterface):
                        "completion_status": datapoint[i][6]} for i in range(len(datapoint))]
             return result
         else:
-            return None
+            return []
 
     def create(self, data: tuple):
 
@@ -773,8 +859,19 @@ class CompletionRecordRepository(RepositoryInterface):
             logging.critical(msg)
             raise DatabaseUpdateError(reason=msg, original_error=e)
 
-    def update(self, data=None):
-        pass # Is not implemented yet, might make sense later on
+    def update(self, data: tuple):
+
+        super()._ensure_connection()
+
+        try:
+            # Update database
+            self.cursor.execute("UPDATE tasks SET habit_name=?, period=?, due_date=?, was_overdue=?, completion_date=?, completion_status=? WHERE habit_id=?", data)
+            self.conn.commit()
+
+        except Exception as e:
+            msg = f"Error while updating completion_records table:  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseFetchDataError(reason=msg, original_error=e)
 
     def delete(self, data=None):
         pass # Is not implemented yet, might make sense later on
@@ -831,50 +928,32 @@ class CompletionRecordRepository(RepositoryInterface):
             logging.critical(msg)
             raise DatabaseFetchDataError(reason=msg, original_error=e)
 
-    # --- STATISTICS ---
-
-    def calculate_streak(self, habit_id):
-
-        super()._ensure_connection()
-        self.find_by_habit_id(habit_id)
-
-        # maybe sort the list according to due_date and/or completion date first?
-
-        # streak = 0
-        # Take the last record -> if completion_staus == completed AND was_overdue = False >> then streak += 1 >> look at next record >> LOOP
-        # If completion_staus == skipped XOR was_overdue == True > break
-
-    def calculate_longest_streak(self, habit_id):
-        pass
-        # maybe sort the list according to due_date and/or completion date first?
-
-        # streak_list = []
-        # streak = 0
-        # counter = 0
-        # Take record[counter] -> if completion_staus == completed AND was_overdue = False >> then streak += 1 AND counter += 1 >> look at next record >> LOOP
-        # If completion_staus == skipped XOR was_overdue == True >> streak_list.append(streak), counter += 1, streak = 0
-
-    def calculate_most_consistent_habit(self):
-        pass
-
-        # Get all unique IDs in records list
-
-        # for each ID in records list, do calculate_longest_streak(habit_id)
-        # Compare longest streaks against each other
-        # Which ID belongs to overall longest streak?
-        # Search habit datapoint according to ID
-        # return habit and longest streak for habit
-
-    def completion_rate(self, habit_id):
-        pass
-
-    def habit_with_highest_completion_rate(self):
-        pass
-
-
-#========== MANAGER CLASSES ==========
+#========== SERVICES CLASSES ==========
 
 class TaskManager:
+    """
+    Service class responsible for task lifecycle management.
+
+    TaskManager coordinates task-related business logic between Habit,
+    TaskRepository, and CompletionRecordRepository. It creates initial tasks,
+    completes or skips current tasks, generates follow-up tasks, updates tasks
+    after habit changes, and removes tasks when habits are paused or deleted.
+
+    The manager keeps the currently active Task object in memory and ensures
+    that task changes are mirrored in the database.
+
+    Args:
+        task_repo (TaskRepository): Repository used to persist and retrieve current tasks.
+        record_repo (CompletionRecordRepository): Repository used to store historical completion records.
+
+    Attributes:
+        task (Task | None): The currently active task managed by this instance.
+
+    Notes:
+        This class is an internal coordination layer and is normally accessed
+        through Habit methods such as complete(), skip(), pause(), reactivate(),
+        delete(), or property setters.
+    """
 
     def __init__(self, task_repo: TaskRepository, record_repo: CompletionRecordRepository):
         """Initiates the TaskManager object and creates connection to the repository interfaces of tasks and completion records.
@@ -975,7 +1054,7 @@ class TaskManager:
         completion_data = (habit.habit_name,
                            habit.habit_id,
                            habit.period.value,
-                           dt.string_to_dt(self.task.due_date),
+                           dt.dt_to_string(self.task.due_date),
                            self.task.is_overdue,
                            dt.dt_to_string(datetime.today()),
                            CompletionStatus.COMPLETED.value)
@@ -1018,7 +1097,7 @@ class TaskManager:
 
         return self.task
 
-    def delete_current_task(self, data = None):
+    def delete_current_task(self, data=None):
         """Processes the deletion of tasks by ID
         -> Calls Task repository to remove the task from table by ID
         """
@@ -1055,6 +1134,104 @@ class TaskManager:
         self.task = updated_task
 
         self.__task_repo.update(self.task)
+
+        updated_record_data = (habit.habit_name,
+                           habit.period.value,
+                           dt.dt_to_string(self.task.due_date),
+                           self.task.is_overdue,
+                           dt.dt_to_string(datetime.today()),
+                           CompletionStatus.COMPLETED.value,
+                           habit.habit_id)
+
+        self.__record_repo.update(updated_record_data)
+
         return self.task
 
-#class RecordAnalyzer: ??
+class RecordAnalyzer:
+    """
+    Service class for calculating habit statistics from completion records.
+
+    RecordAnalyzer reads historical completion records from
+    CompletionRecordRepository and derives analytics for individual habits.
+    These analytics include current streaks, longest streaks, completion rates,
+    and on-time completion rates.
+
+    Args:
+        record_repo (CompletionRecordRepository): Repository used to retrieve completion history.
+
+    Attributes:
+        record_repo (CompletionRecordRepository): Repository containing completion records.
+
+    Notes:
+        The analyzer does not modify habit, task, or record data. It only reads
+        completion records and returns calculated statistics.
+    """
+
+    def __init__(self, record_repo: CompletionRecordRepository):
+        self.record_repo = record_repo
+
+    def calculate_streak(self, habit: Habit):
+
+        ref_records = self.record_repo.find_by_habit_id(habit.habit_id)
+
+        ref_records_sorted = sorted(ref_records, key=lambda x: dt.string_to_dt(x['due_date']), reverse=True)
+
+        print(ref_records_sorted)
+
+        streak = 0
+        for record in ref_records_sorted:
+            if record["completion_status"] == CompletionStatus.COMPLETED.value and record["was_overdue"] == 0:
+                streak += 1
+            else:
+                break
+
+        return streak
+
+    def calculate_longest_streak(self, habit: Habit):
+
+        ref_records = self.record_repo.find_by_habit_id(habit.habit_id)
+
+        ref_records_sorted = sorted(ref_records, key=lambda x: dt.string_to_dt(x['due_date']), reverse=True)
+
+        streak_list = []
+        streak = 0
+        for record in ref_records_sorted:
+            if record["completion_status"] == CompletionStatus.COMPLETED.value and record["was_overdue"] == 0:
+                streak += 1
+            else:
+                streak_list.append(streak)
+                streak = 0
+
+        return max(streak_list)
+
+    def calculate_completion_rate(self, habit: Habit):
+
+        ref_records = self.record_repo.find_by_habit_id(habit.habit_id)
+
+        total_records = len(ref_records)
+        completed_records = sum(1 for record in ref_records if record['completion_status'] == 'Completed')
+
+        return completed_records / total_records
+
+    def calculate_finished_ontime_rate(self, habit: Habit):
+
+        ref_records = self.record_repo.find_by_habit_id(habit.habit_id)
+        total_records = len(ref_records)
+
+        ontime_records = sum(1 for record in ref_records if record['was_overdue'] == 0)
+
+        return ontime_records / total_records
+
+    def calculate_most_consistent_habit(self):
+        pass
+
+        # Get all unique IDs in records list
+
+        # for each ID in records list, do calculate_longest_streak(habit_id)
+        # Compare longest streaks against each other
+        # Which ID belongs to overall longest streak?
+        # Search habit datapoint according to ID
+        # return habit and longest streak for habit
+
+    def habit_with_highest_completion_rate(self):
+        pass
