@@ -1,15 +1,9 @@
-# Import Logging for Bug Fixing / BUILT-IN
+# Imported via other imported modules:
+# utils_datetime_helper, enums, repository_modules
+
+# Set logger
 import logging
-logging.basicConfig(level=logging.INFO, filename="habit-tracker.log", filemode="a", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
-# Import helper to handle conversion string to datetime and vice versa / USER-DEFINED
-from utils_datetime_helper import *
-
-# Import enumeration classes / USER-DEFINED
-from enums import *
-
-# Import repository modules / USER-DEFINED
-from repository_modules import *
+logger = logging.getLogger(__name__)
 
 # Import manager modules / USER-DEFINED
 from manager_modules import *
@@ -54,6 +48,8 @@ class Habit:
         self._habit_id = None
         self._streak = None
 
+        logger.info(f" Creating Habit '{self.habit_name}' (ID {self._habit_id}).")
+
         ## REPOSITORY CONNECTION
 
         # Connect to habit repository interface
@@ -63,7 +59,7 @@ class Habit:
         if self.__habit_repo.duplicate_naming(self) > 0:
             raise DuplicateHabitError(habit_name=self._habit_name)
 
-        # If duplicate check is passed, save to repository and pass to the manager
+        # If a duplicate check is passed, save to the repository and pass to the manager
         self.__save_habit()
 
     @property
@@ -99,16 +95,16 @@ class Habit:
 
             # Initiate Task Manager
             self.__task_manager = TaskManager(self.__task_repo, self.__record_repo)
-            # Create first task entry
+            # Create the first task entry
             self.__task_manager.create_first_task(self)
 
             # Initiate Record Analyzer
             self.__record_analyzer = RecordAnalyzer(self.__record_repo)
 
-        # logging.info(f"Habit '{self.habit_name}' (ID {self._habit_id}) erfolgreich angelegt.")
+            logger.info(f" Habit '{self.habit_name}' (ID {self._habit_id}) created successfully.")
 
         except Exception as e:
-            # logging.error(f"Fehler beim Anlegen von Habit {self.habit_name}: {e}")
+            logger.error(f"Error while creation of Habit '{self.habit_name}' (ID {self._habit_id}): {e}")
             raise e
 
     # INTERACTION
@@ -120,6 +116,8 @@ class Habit:
         Returns:
             None
         """
+
+        logger.info(f" Completing current task for Habit '{self.habit_name}' (ID {self._habit_id}).")
         self.__task_manager.complete_current_task(self)
 
     def skip(self):
@@ -129,6 +127,8 @@ class Habit:
         Returns:
             None
         """
+
+        logger.info(f" Skipping current task for Habit '{self.habit_name}' (ID {self._habit_id}).")
         self.__task_manager.skip_current_task(self)
 
     # ADMINISTRATION
@@ -144,13 +144,14 @@ class Habit:
 
         #Missing the check whether habit has been active before.
         self._status = Status.PAUSED
+        logger.info(f" Pausing Habit '{self.habit_name}' (ID {self._habit_id}).")
         self.__habit_repo.update(self)
         self.__task_manager.delete_current_task(self)
 
     def reactivate(self):
         """Sets habit status to "Active" (only if it has been "Paused" before)
         -> Calls habit repository interface to update the habit table
-        -> Calls task manager to create corresponding task and make entry in task table
+        -> Calls task manager to create a corresponding task and make entry in the task table
 
         Returns:
             None
@@ -158,8 +159,9 @@ class Habit:
 
         # Missing the check whether habit has been paused before.
         self._status = Status.ACTIVE
+        logger.info(f" Reactivating Habit '{self.habit_name}' (ID {self._habit_id}).")
         self.__habit_repo.update(self)
-        # Create first task entry
+        # Create the first task entry
         self.__task_manager.create_first_task(self)
 
     def delete(self):
@@ -174,6 +176,7 @@ class Habit:
             Right now it is unclear how to handle the corresponding records.
         """
 
+        logger.info(f" Deleting Habit '{self.habit_name}' (ID {self._habit_id}).")
         self.__habit_repo.delete(self)
         self.__task_manager.delete_current_task(self)
 
@@ -192,6 +195,7 @@ class Habit:
             None
         """
         self._habit_name = value
+        logger.info(f" Changing habit name to '{self.habit_name}' (ID {self._habit_id}).")
         self.__habit_repo.update(self)
         self.__task_manager.update_current_task(self)
 
@@ -210,6 +214,7 @@ class Habit:
             None
         """
         self._period = value
+        logger.info(f" Changing habit period to '{self.period.value}' days (ID {self._habit_id}).")
         self.__habit_repo.update(self)
         self.__task_manager.update_current_task(self)
 
@@ -229,6 +234,7 @@ class Habit:
         """
 
         self._start_date = string_to_dt(value)
+        logger.info(f" Changing habit start_date to '{self.start_date}' (ID {self._habit_id}).")
         self.__habit_repo.update(self)
         self.__task_manager.update_current_task(self)
 

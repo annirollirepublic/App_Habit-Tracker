@@ -1,6 +1,10 @@
 from enums import *
 from utils_datetime_helper import *
 
+# Set logger
+import logging
+logger = logging.getLogger(__name__)
+
 class Task:
     """
     Value object representing one actionable task for a habit.
@@ -38,7 +42,10 @@ class Task:
         print(dt_to_string(self.due_date))
         print(completion_status.value)
 
+        logger.info(f" Creating Task for Habit '{self.habit_name}' (ID {self.habit_id}).")
+
     @property
     #overdue as a dynamic property, since it is recalculated every day
     def is_overdue(self):
+        logger.info(f"Calculating whether Task is overdue for Habit '{self.habit_name}' (ID {self.habit_id}).")
         return self.due_date < datetime.today()

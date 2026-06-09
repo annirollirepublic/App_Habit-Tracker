@@ -6,6 +6,10 @@ from utils_datetime_helper import *
 # Import task class / USER-DEFINED
 from task import Task
 
+# Set logger
+import logging
+logger = logging.getLogger(__name__)
+
 # Import enumeration classes / USER-DEFINED
 from enums import *
 
@@ -61,6 +65,8 @@ class TaskManager:
             Task: Task with new due_date
         """
 
+        logger.info(f"Creating new task for habit {habit.habit_name} (ID {habit.habit_id})")
+
         # Get relevant information on referenced task from repository
         ref_task = self.__task_repo.find_by_habit_id(habit.habit_id)
         next_due_date = string_to_dt(ref_task[0]["due_date"]) + timedelta(days=habit.period.value)
@@ -91,6 +97,8 @@ class TaskManager:
         Returns:
             Task: The created Task object will be returned
         """
+
+        logger.info(f"Creating first task for habit {habit.habit_name} (ID {habit.habit_id})")
 
         ref_task = self.__task_repo.find_by_habit_id(habit.habit_id)
 

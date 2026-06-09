@@ -10,9 +10,9 @@ from typing import Any
 # Import exceptions and logging for activity screening and debugging / BUILT-IN
 from exceptions import *
 
-# Import Logging for Bug Fixing / BUILT-IN
+# Set logger
 import logging
-logging.basicConfig(level=logging.INFO, filename="habit-tracker.log", filemode="a", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 # Import helper to handle conversion string to datetime and vice versa / USER-DEFINED
 from utils_datetime_helper import *
@@ -92,6 +92,9 @@ class RepositoryInterface(ABC):
         pass
 
     def _ensure_connection(self):
+
+        logger.info(f"Checking for open connection")
+
         if self.conn is not None:
             # If no open connection available, check whether connection is live
             try:
@@ -102,7 +105,9 @@ class RepositoryInterface(ABC):
                 self.conn = None
                 self.cursor = None
 
-        # Create new connection
+        logger.info(f"No open connection available. Creating new connection")
+
+        # Create a new connection
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
@@ -136,7 +141,7 @@ class HabitRepository(RepositoryInterface):
 
     def _create_scheme(self) -> None:
 
-        # Ensure habits scheme
+        logger.info(f"Setting up scheme for habit table")
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS habits
                                (
                                    habit_name TEXT    NOT NULL,
@@ -146,12 +151,11 @@ class HabitRepository(RepositoryInterface):
                                    status     TEXT    NOT NULL
                                )""")
         self.conn.commit()
-        logging.debug(f"Database habit connection established to {self.db_path}")
 
     def _fetch_data(self):
 
+        logger.info(f"Fetching data from habit table")
         datapoint = self.cursor.fetchall()
-        print(datapoint)
 
         if datapoint and isinstance(datapoint, (tuple, list)):
             result = [{"habit_name": datapoint[i][0],
@@ -167,8 +171,9 @@ class HabitRepository(RepositoryInterface):
         """Checks whether a habit with the same name has already been created"""
 
         super()._ensure_connection()
-
         input_name = habit.habit_name
+
+        logger.info(f"Checking for duplicate habit name: {input_name.lower()}")
 
         try:
             self.cursor.execute("SELECT * FROM habits WHERE LOWER(habit_name)=?", (input_name.lower(),))
@@ -184,6 +189,8 @@ class HabitRepository(RepositoryInterface):
     def get_largest_id(self) -> int:
 
         super()._ensure_connection()
+
+        logger.info(f"Fetching largest ID")
 
         try:
             # Get all IDs as list
@@ -268,6 +275,8 @@ class HabitRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
+        logger.info(f"Deleting habit datapoint")
+
         try:
             self.cursor.execute("DELETE FROM habits WHERE habit_id=?", (habit.habit_id,))
             self.conn.commit()
@@ -287,6 +296,8 @@ class HabitRepository(RepositoryInterface):
         """
 
         super()._ensure_connection()
+
+        logger.info(f"Searching for habit with ID: {input_id}")
 
         try:
             # Search for ID in database
@@ -311,6 +322,8 @@ class HabitRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
+        logger.info(f"Searching for habit with name: {input_name}")
+
         try:
             # Search for name (lowercase) in database
             self.cursor.execute(
@@ -333,6 +346,8 @@ class HabitRepository(RepositoryInterface):
         """
 
         super()._ensure_connection()
+
+        logger.info(f"Browsing all habits")
 
         try:
             # Get all entries
@@ -371,7 +386,7 @@ class TaskRepository(RepositoryInterface):
 
     def _create_scheme(self) -> None:
 
-        # Ensure habits scheme
+        logger.info(f"Setting up scheme for task table")
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS tasks
                                (
                                    habit_name        TEXT    NOT NULL,
@@ -385,7 +400,8 @@ class TaskRepository(RepositoryInterface):
     def _fetch_data(self):
 
         datapoint = self.cursor.fetchall()
-        print(datapoint)
+
+        logger.info(f"Fetching data from task table")
 
         if datapoint and isinstance(datapoint, (tuple, list)):
             result = [{"habit_name": datapoint[i][0],
@@ -411,6 +427,7 @@ class TaskRepository(RepositoryInterface):
         try:
             self.cursor.execute("INSERT INTO tasks VALUES (?, ?, ?, ?, ?)", data)
             self.conn.commit()
+            logging.debug(f"Task \"{task.habit_name}\" (ID:{task.habit_id}) created successfully\"")
 
         except Exception as e:
             msg = f"Error while task creation for Habit \"{task.habit_name}\" (ID:{task.habit_id}):  {type(e).__name__} | {e}"
@@ -433,6 +450,7 @@ class TaskRepository(RepositoryInterface):
                 "UPDATE tasks SET habit_name=?, due_date=?, is_overdue=?, completion_status=? WHERE habit_id=?",
                 (*data, task.habit_id))
             self.conn.commit()
+            logging.debug(f"Task \"{task.habit_name}\" (ID:{task.habit_id}) updated successfully\"")
 
         except Exception as e:
             msg = f"Error while task update for Habit \"{task.habit_name}\" (ID:{task.habit_id}):  {type(e).__name__} | {e}"
@@ -446,6 +464,7 @@ class TaskRepository(RepositoryInterface):
         try:
             self.cursor.execute("DELETE FROM tasks WHERE habit_id=?", (task.habit_id,))
             self.conn.commit()
+            logging.debug(f"Task \"{task.habit_name}\" (ID:{task.habit_id}) deleted successfully\"")
 
         except Exception as e:
             msg = f"Error while task removal for Habit \"{task.habit_name}\" (ID:{task.habit_id}):  {type(e).__name__} | {e}"
@@ -460,6 +479,8 @@ class TaskRepository(RepositoryInterface):
             None: If no Habit with the given name exists"""
 
         super()._ensure_connection()
+
+        logger.info(f"Searching for task with ID: {input_id}")
 
         try:
             # Search for name (lowercase) in database
@@ -478,6 +499,8 @@ class TaskRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
+        logger.info(f"Searching for task with name: {value}")
+
         try:
             # Search for name (lowercase) in database
             self.cursor.execute(
@@ -494,6 +517,8 @@ class TaskRepository(RepositoryInterface):
     def browse_all(self):
 
         super()._ensure_connection()
+
+        logger.info(f"Browsing all tasks")
 
         try:
             # Get all entries
@@ -534,6 +559,7 @@ class CompletionRecordRepository(RepositoryInterface):
 
     def _create_scheme(self):
 
+        logger.info(f"Setting up scheme for completion_records table")
         self.cursor.execute(""" CREATE TABLE IF NOT EXISTS completion_records
                                 (
                                     habit_name        TEXT    NOT NULL,
@@ -549,7 +575,8 @@ class CompletionRecordRepository(RepositoryInterface):
     def _fetch_data(self):
 
         datapoint = self.cursor.fetchall()
-        print(datapoint)
+
+        logger.info(f"Fetching data from completion_records table")
 
         if datapoint and isinstance(datapoint, (tuple, list)):
             result = [{"habit_name": datapoint[i][0],
@@ -570,6 +597,7 @@ class CompletionRecordRepository(RepositoryInterface):
         try:
             self.cursor.execute("INSERT INTO completion_records VALUES (?, ?, ?, ?, ?, ?, ?)", data)
             self.conn.commit()
+            logging.debug(f"Completion record for Habit \"{data[0]}\" (ID:{data[1]}) created successfully\"")
 
         except Exception as e:
             msg = f"Error while record creation for Habit \"{data[0]}\" (ID:{data[1]}):  {type(e).__name__} | {e}"
@@ -586,6 +614,7 @@ class CompletionRecordRepository(RepositoryInterface):
                 "UPDATE main.completion_records SET habit_name=?, period=?, due_date=?, was_overdue=?, completion_date=?, completion_status=? WHERE habit_id=?",
                 data)
             self.conn.commit()
+            logging.debug(f"Completion record for Habit \"{data[0]}\" (ID:{data[1]}) updated successfully\"")
 
         except Exception as e:
             msg = f"Error while updating completion_records table:  {type(e).__name__} | {e}"
@@ -601,6 +630,8 @@ class CompletionRecordRepository(RepositoryInterface):
     def find_by_habit_id(self, input_id: int):
 
         super()._ensure_connection()
+
+        logger.info(f"Searching for completion_records with ID: {input_id}")
 
         try:
             # Search for name (lowercase) in database
@@ -619,6 +650,8 @@ class CompletionRecordRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
+        logger.info(f"Searching for completion_records with name: {input_name}")
+
         try:
             # Search for name (lowercase) in database
             self.cursor.execute(
@@ -635,6 +668,8 @@ class CompletionRecordRepository(RepositoryInterface):
     def browse_all(self):
 
         super()._ensure_connection()
+
+        logger.info(f"Browsing all completion_records")
 
         try:
             # Get all entries
