@@ -13,16 +13,16 @@ from enum import Enum
 # Import datetime to handle time related data
 from datetime import datetime, timedelta
 # Import helper to handle conversion string to datetime and vice versa
-import utils_datetime_helper as dt
+from source import utils_datetime_helper as dt
 
 # Import exceptions and logging for activity screening and debugging
-from exceptions import *
+from source.exceptions import *
 # Import Logging for Bug Fixing
 import logging
-logging.basicConfig(level=logging.INFO, filename="habit-tracker.log", filemode="a", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, filename="../habit-tracker.log", filemode="a", format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # Set global database
-global_db_path = "habit-tracker-data-12.db"
+global_db_path = "../habit-tracker-data-12.db"
 
 #========== ENUMERATION CLASSES ==========
 

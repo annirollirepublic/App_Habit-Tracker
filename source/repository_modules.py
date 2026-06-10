@@ -15,16 +15,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import helper to handle conversion string to datetime and vice versa / USER-DEFINED
-from utils_datetime_helper import *
+from utils_datetime_helper import dt_to_string
 
 # Import database path / USER-DEFINED
 from config import global_db_path
 
 # Import task class / USER-DEFINED
 from task import Task
-
-# Import enumeration classes / USER-DEFINED
-from enums import *
 
 # ========== REPOSITORY CLASSES ==========
 

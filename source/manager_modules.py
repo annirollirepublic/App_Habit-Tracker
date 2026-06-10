@@ -1,7 +1,7 @@
 # Import datetime module / BUILT-IN
 from datetime import timedelta
 # Import datetime helper / USER-DEFINED
-from utils_datetime_helper import *
+from utils_datetime_helper import string_to_dt, dt_to_string
 
 # Import task class / USER-DEFINED
 from task import Task
@@ -11,10 +11,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import enumeration classes / USER-DEFINED
-from enums import *
+from enums import CompletionStatus
 
 # Import repository modules / USER-DEFINED
-from repository_modules import *
+from repository_modules import TaskRepository, CompletionRecordRepository
 
 #========== SERVICES CLASSES ==========
 

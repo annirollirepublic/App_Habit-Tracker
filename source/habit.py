@@ -1,15 +1,27 @@
-# Imported via other imported modules:
-# utils_datetime_helper, enums, repository_modules
+# Import datetime for datetime handling / BUILT-IN
+from datetime import datetime
+
+# Import exceptions and logging for activity screening and debugging / BUILT-IN
+from exceptions import *
 
 # Set logger
 import logging
 logger = logging.getLogger(__name__)
 
+# Import helper to handle conversion string to datetime and vice versa / USER-DEFINED
+from utils_datetime_helper import string_to_dt
+
+# Import enumeration classes / USER-DEFINED
+from enums import Status, Period
+
 # Import manager modules / USER-DEFINED
-from manager_modules import *
+from manager_modules import TaskManager
 
 # Import analyzer modules / USER-DEFINED
-from analyzer_modules import *
+from analyzer_modules import RecordAnalyzer
+
+# Import repository modules / USER-DEFINED
+from repository_modules import HabitRepository, TaskRepository, CompletionRecordRepository
 
 class Habit:
     """
