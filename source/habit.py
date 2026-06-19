@@ -54,11 +54,10 @@ class Habit:
         self._start_date = start_date #datetime format
 
         # Automatic variables
-        self._status: Status = Status.ACTIVE
+        self._status = Status.ACTIVE
 
         # Initialize calculated values
         self._habit_id = None
-        self._streak = None
 
         logger.info(f" Creating Habit '{self.habit_name}' (ID {self._habit_id}).")
 
@@ -252,4 +251,4 @@ class Habit:
 
     def calculate_current_streak(self):
 
-        self.__record_analyzer.calculate_streak(self)
+        return self.__record_analyzer.calculate_streak(self)

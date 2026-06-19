@@ -1,5 +1,4 @@
-import class_definitions as cd
-from class_definitions import HabitRepository
+from archive import class_definitions as cd
 
 #my_first_habit = cd.Habit("Make Laundry 20", cd.Period.DAILY)
 
