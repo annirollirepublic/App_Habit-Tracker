@@ -49,11 +49,8 @@ class RepositoryInterface(ABC):
         CompletionRecordRepository.
     """
 
-    # Database is the same for all Objects of Class
-    __DB_PATH = global_db_path
-
-    def __init__(self):
-        self.db_path = self.__DB_PATH
+    def __init__(self, db_path: str = global_db_path):
+        self.db_path = db_path
         self.conn: sqlite3.Connection | None = None
 
     @abstractmethod
@@ -132,9 +129,9 @@ class HabitRepository(RepositoryInterface):
         It has no interface to Task objects, Record objects, or other Repository objects
     """
 
-    def __init__(self):
+    def __init__(self, db_path = None):
         """Initiates the HabitRepository object and sets up the basic attributes"""
-        super().__init__()
+        super().__init__(db_path) if db_path is not None else super().__init__()
 
     def _create_scheme(self) -> None:
 
@@ -378,8 +375,9 @@ class TaskRepository(RepositoryInterface):
         being called directly by user-facing code.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, db_path=None):
+        """Initiates the TaskRepository object and sets up the basic attributes"""
+        super().__init__(db_path) if db_path is not None else super().__init__()
 
     def _create_scheme(self) -> None:
 
@@ -551,8 +549,9 @@ class CompletionRecordRepository(RepositoryInterface):
         such as streaks, completion rates, and on-time completion rates.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, db_path=None):
+        """Initiates the RecordRepository object and sets up the basic attributes"""
+        super().__init__(db_path) if db_path is not None else super().__init__()
 
     def _create_scheme(self):
 
