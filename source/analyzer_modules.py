@@ -39,8 +39,6 @@ class RecordAnalyzer:
 
         ref_records_sorted = sorted(ref_records, key=lambda x: string_to_dt(x['due_date']), reverse=True)
 
-        print(ref_records_sorted)
-
         streak = 0
         for record in ref_records_sorted:
             if record["completion_status"] == CompletionStatus.COMPLETED.value and record["was_overdue"] == 0:
@@ -64,6 +62,7 @@ class RecordAnalyzer:
             else:
                 streak_list.append(streak)
                 streak = 0
+        streak_list.append(streak) # Possible that one streak is appended double, but this does not affect the correctness of the outcome
 
         return max(streak_list)
 
@@ -74,6 +73,8 @@ class RecordAnalyzer:
         total_records = len(ref_records)
         completed_records = sum(1 for record in ref_records if record['completion_status'] == 'Completed')
 
+        if total_records == 0:
+            return 0
         return completed_records / total_records
 
     def calculate_finished_ontime_rate(self, habit):
@@ -81,8 +82,10 @@ class RecordAnalyzer:
         ref_records = self.record_repo.find_by_habit_id(habit.habit_id)
         total_records = len(ref_records)
 
-        ontime_records = sum(1 for record in ref_records if record['was_overdue'] == 0)
+        ontime_records = sum(1 for record in ref_records if record['was_overdue'] == 0 and record['completion_status'] == 'Completed')
 
+        if total_records == 0:
+            return 0
         return ontime_records / total_records
 
     def calculate_most_consistent_habit(self):

@@ -11,6 +11,9 @@ from utils_datetime_helper import dt_to_string
 import logging
 logger = logging.getLogger(__name__)
 
+# TODO : Possible Implementation of Task as @dataclass, to get rid of the __init__ and equality, when task properties are equal
+# For now no practical use of dataclasses, since the Task objects are never compared
+
 class Task:
     """
     Value object representing one actionable task for a habit.
@@ -43,10 +46,6 @@ class Task:
         self.habit_id = habit_id
         self.due_date = due_date
         self.completion_status = completion_status
-        print(self.habit_name)
-        print(self.habit_id)
-        print(dt_to_string(self.due_date))
-        print(completion_status.value)
 
         logger.info(f" Creating Task for Habit '{self.habit_name}' (ID {self.habit_id}).")
 
