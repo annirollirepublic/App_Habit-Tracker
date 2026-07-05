@@ -2,26 +2,27 @@
 from datetime import datetime
 
 # Import exceptions and logging for activity screening and debugging / BUILT-IN
-from exceptions import *
+from source.exceptions import *
 
 # Set logger
 import logging
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Import helper to handle conversion string to datetime and vice versa / USER-DEFINED
 from utils_datetime_helper import string_to_dt
 
 # Import enumeration classes / USER-DEFINED
-from enums import Status, Period
+from source.enums import Status, Period
 
 # Import manager modules / USER-DEFINED
-from manager_modules import TaskManager
+from source.manager_modules import TaskManager
 
 # Import analyzer modules / USER-DEFINED
-from analyzer_modules import RecordAnalyzer
+from source.analyzer_modules import RecordAnalyzer
 
 # Import repository modules / USER-DEFINED
-from repository_modules import HabitRepository, TaskRepository, CompletionRecordRepository
+from source.repository_modules import HabitRepository, TaskRepository, CompletionRecordRepository
 
 class Habit:
     """
@@ -59,7 +60,7 @@ class Habit:
         # Initialize calculated values
         self._habit_id = None
 
-        logger.info(f" Creating Habit '{self.habit_name}' (ID {self._habit_id}).")
+        logger.info(f"Creating Habit '{self.habit_name}' (ID {self._habit_id}).")
 
         ## REPOSITORY CONNECTION
 
@@ -112,7 +113,7 @@ class Habit:
             # Initiate Record Analyzer
             self.__record_analyzer = RecordAnalyzer(self.__record_repo)
 
-            logger.info(f" Habit '{self.habit_name}' (ID {self._habit_id}) created successfully.")
+            logger.info(f"Habit '{self.habit_name}' (ID {self._habit_id}) created successfully.")
 
         except Exception as e:
             logger.error(f"Error while creation of Habit '{self.habit_name}' (ID {self._habit_id}): {e}")

@@ -1,11 +1,5 @@
-from datetime import datetime
-from unittest.mock import Mock
-from pytest_mock import mocker
 from source.analyzer_modules import RecordAnalyzer
 import pytest
-
-# # IMPORTANT: Patch where RecordAnalyzer IMPORTS from!
-# MockRecordRepo = mocker.patch("source.analyzer_modules.CompletionRecordRepository")
 
 class TestAnalyzerCalculations:
 

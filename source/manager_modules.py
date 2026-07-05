@@ -1,5 +1,5 @@
 # Import datetime module / BUILT-IN
-from datetime import timedelta
+from datetime import timedelta, datetime
 # Import datetime helper / USER-DEFINED
 from utils_datetime_helper import string_to_dt, dt_to_string
 
@@ -69,7 +69,10 @@ class TaskManager:
 
         # Get relevant information on referenced task from repository
         ref_task = self.__task_repo.find_by_habit_id(habit.habit_id)
-        next_due_date = string_to_dt(ref_task[0]["due_date"]) + timedelta(days=habit.period.value)
+        if isinstance(ref_task, list):
+            next_due_date = string_to_dt(ref_task[0]["due_date"]) + timedelta(days=habit.period.value)
+        else:
+            next_due_date = string_to_dt(ref_task["due_date"]) + timedelta(days=habit.period.value)
 
         # Create new task, delete old task
         self.__task_repo.delete(self.task)
@@ -117,7 +120,10 @@ class TaskManager:
             return self.task
 
         else:
-            existing_task = ref_task[0]
+            if isinstance(ref_task, list):
+                existing_task = ref_task[0]
+            else:
+                existing_task = ref_task
 
             # Instantiate object from task table
             loaded_task = Task(habit_id=existing_task["habit_id"],
@@ -213,8 +219,17 @@ class TaskManager:
         """
         ref_task = self.__task_repo.find_by_habit_id(habit.habit_id)
 
-        old_due_date = string_to_dt(ref_task[0]["due_date"]) #conversion from string to datetime format
+        if isinstance(ref_task, list):
+            old_due_date = string_to_dt(ref_task[0]["due_date"]) #conversion from string to datetime format
+        else:
+            old_due_date = string_to_dt(ref_task["due_date"])
+
+        # This calculation will only result in a changed due_date if habit start_date or periodicity has changed
+        # If no change in at least one of these attributes, the result of the calculation (incl while loop below) will be the same as old_due_date
         new_due_date = habit.start_date + timedelta(days=habit.period.value)
+
+        # Handle case where due date is already in the past
+        # New due date must be at the same time or after the old due date
         while new_due_date <= old_due_date:
             new_due_date += timedelta(days=habit.period.value)
 
@@ -227,13 +242,8 @@ class TaskManager:
 
         self.__task_repo.update(self.task)
 
-        updated_record_data = (habit.habit_name,
-                           habit.period.value,
-                           dt_to_string(self.task.due_date),
-                           self.task.is_overdue,
-                           dt_to_string(datetime.today()),
-                           CompletionStatus.COMPLETED.value,
-                           habit.habit_id)
+        # historical data is not changed, except for the habit_name
+        updated_record_data = (habit.habit_name, habit.habit_id)
 
         self.__record_repo.update(updated_record_data)
 

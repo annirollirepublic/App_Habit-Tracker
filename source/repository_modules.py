@@ -607,7 +607,7 @@ class CompletionRecordRepository(RepositoryInterface):
         try:
             # Update database
             self.cursor.execute(
-                "UPDATE main.completion_records SET habit_name=?, period=?, due_date=?, was_overdue=?, completion_date=?, completion_status=? WHERE habit_id=?",
+                "UPDATE main.completion_records SET habit_name=? WHERE habit_id=?",
                 data)
             self.conn.commit()
             logging.debug(f"Completion record for Habit \"{data[0]}\" (ID:{data[1]}) updated successfully\"")
