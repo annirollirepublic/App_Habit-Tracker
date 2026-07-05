@@ -1,14 +1,13 @@
 from unittest.mock import Mock
 from source.exceptions import DatabaseFetchDataError
-import pytest
-from source.habit import Habit
-from source.enums import Period, Status
 from source.repository_modules import HabitRepository
-import datetime
+
+import pytest
+pytestmark = pytest.mark.unit
 import sqlite3
 
 # Most of the repository functions are strongly coupled with the database, so they cannot be tested in isolation.
-# Therefore, they cannot be tested in a unit test, but must be tested in an integration test instead.
+# Therefore, they cannot be tested in an unittest, but must be tested in an integration test instead.
 # See test_integration.py for detailes integration testing.
 
 @pytest.fixture
@@ -25,8 +24,8 @@ class TestHabitReadFromDatabase:
     """Test Class that explicitly tests the read-only methods of the HabitRepository class."""
 
     @pytest.fixture(autouse=True, scope="function")
-    def cursor(self, mock_habit_repo):
-        """Setup the mock cursor before each test. This ensures that each test starts with a clean cursor state."""
+    def mock_connection_and_cursor(self, mock_habit_repo):
+        """Prepare a mocked connection and cursor before each test."""
         mock_habit_repo.conn = Mock()
         mock_habit_repo.cursor = Mock()
 
@@ -41,6 +40,8 @@ class TestHabitReadFromDatabase:
 
         assert result == len(match)
         assert isinstance(result, int)
+        mock_habit_repo.cursor.execute.assert_called_once()
+        mock_habit_repo.cursor.fetchall.assert_called_once()
 
     def test_duplicate_exception(self, mock_habit_repo, mock_habit):
         """Test the exception handling when fetching duplicate habits."""
@@ -63,6 +64,8 @@ class TestHabitReadFromDatabase:
 
         assert result == max(list_of_ids, default=0)
         assert isinstance(result, int)
+        mock_habit_repo.cursor.execute.assert_called_once()
+        mock_habit_repo.cursor.fetchall.assert_called_once()
 
     def test_get_largest_id_exception(self, mock_habit_repo):
         """Test the exception handling when fetching the largest habit ID."""

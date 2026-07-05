@@ -155,7 +155,7 @@ class HabitRepository(RepositoryInterface):
             result = [{"habit_name": datapoint[i][0],
                        "habit_id": datapoint[i][1],
                        "period": datapoint[i][2],
-                       "due_date": datapoint[i][3],  # string format
+                       "start_date": datapoint[i][3],  # string format
                        "status": datapoint[i][4]} for i in range(len(datapoint))]
             return result
         else:

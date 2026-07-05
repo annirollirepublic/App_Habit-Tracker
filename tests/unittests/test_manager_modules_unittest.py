@@ -1,4 +1,8 @@
 from source.utils_datetime_helper import string_to_dt
+from source.enums import CompletionStatus
+
+import pytest
+pytestmark = pytest.mark.unit
 from datetime import timedelta
 
 class TestTaskManagerInitialization:
@@ -11,7 +15,7 @@ class TestTaskManagerInitialization:
         assert result.habit_name == mock_habit.habit_name
         assert result.habit_id == mock_habit.habit_id
         assert result.due_date == mock_habit.start_date
-        assert result.completion_status.value == "Pending"
+        assert result.completion_status.value == CompletionStatus.PENDING.value
 
     def test_create_task_from_db(self, mock_dependencies, mock_manager, mock_habit, sample_task):
         mock_dependencies["task_repo"].find_by_habit_id.return_value = sample_task
