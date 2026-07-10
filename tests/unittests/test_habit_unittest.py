@@ -100,7 +100,6 @@ class TestHabitInteraction:
         mock_dependencies["task_manager"].skip_current_task.assert_called_once_with(mock_habit_for_habit_class_tests)
 
     def test_pause_habit(self, mock_habit_for_habit_class_tests, mock_dependencies):
-        assert mock_habit_for_habit_class_tests.status.value == Status.PAUSED.value
         mock_habit_for_habit_class_tests.pause()
         
         assert mock_habit_for_habit_class_tests.status.value == Status.PAUSED.value
