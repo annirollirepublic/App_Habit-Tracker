@@ -78,7 +78,7 @@ def mock_habit(request):
 
 @pytest.fixture(params=[("30 Minutes Walk", Period.DAILY)],
                 ids=["30 Minutes Walk"])
-def mock_habit_for_habit_class_tests(request):
+def mock_habit_for_habit_class_tests(request, mock_dependencies):
     name, period = request.param
     return Habit(name, period)
 
