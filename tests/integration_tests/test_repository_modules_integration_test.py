@@ -318,7 +318,7 @@ class TestRecordRepositoryRead:
         assert record_names.count("Change Bed Laundry") == expected_record_amt_change_bed_laundry
         assert record_names.count("Stretching Routine") == expected_record_amt_stretching_routine
 
-class TestTaskRepositoryWrite:
+class TestRecordRepositoryWrite:
 
     def test_create_record(self, mock_record_tuple, record_repo_with_temp_path):
         record_repo_with_temp_path.create(mock_record_tuple)
