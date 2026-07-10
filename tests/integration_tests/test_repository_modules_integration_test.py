@@ -13,8 +13,6 @@ from tests.conftest import mock_habit
 pytestmark = pytest.mark.integration
 import datetime
 
-# TODO: How can I assure, that the input database is always suitable for testing?
-
 # Create a temporary database for testing
 @pytest.fixture(scope="function", name="temp_db_path_for_testing")
 def temp_db_path_for_testing(tmp_path):
