@@ -1,11 +1,11 @@
 # Import datetime helper / USER-DEFINED
-from utils_datetime_helper import string_to_dt
+from source.utils_datetime_helper import string_to_dt
 
 # Import enumeration classes / USER-DEFINED
-from enums import CompletionStatus
+from source.enums import CompletionStatus
 
 # Import repository modules / USER-DEFINED
-from repository_modules import CompletionRecordRepository
+from source.repository_modules import CompletionRecordRepository
 
 
 #========== SERVICES CLASSES ==========

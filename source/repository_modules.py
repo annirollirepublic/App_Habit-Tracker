@@ -553,6 +553,7 @@ class CompletionRecordRepository(RepositoryInterface):
         """Initiates the RecordRepository object and sets up the basic attributes"""
         super().__init__(db_path) if db_path is not None else super().__init__()
 
+
     def _create_scheme(self):
 
         logger.info(f"Setting up scheme for completion_records table")
@@ -586,17 +587,35 @@ class CompletionRecordRepository(RepositoryInterface):
         else:
             return []
 
+    def _convert_tuple(self, data: tuple):
+
+        habit_name, habit_id, period, due_date, was_overdue, completion_date, completion_status = data
+
+        converted_data = (
+            habit_name,
+            habit_id,
+            period,
+            dt_to_string(due_date),  # convert the datetime object to string
+            was_overdue,
+            dt_to_string(completion_date),  # convert the datetime object to string
+            completion_status
+        )
+
+        return converted_data
+
     def create(self, data: tuple):
 
         super()._ensure_connection()
 
+        converted_data = self._convert_tuple(data)
+
         try:
-            self.cursor.execute("INSERT INTO completion_records VALUES (?, ?, ?, ?, ?, ?, ?)", data)
+            self.cursor.execute("INSERT INTO completion_records VALUES (?, ?, ?, ?, ?, ?, ?)", converted_data)
             self.conn.commit()
-            logging.debug(f"Completion record for Habit \"{data[0]}\" (ID:{data[1]}) created successfully\"")
+            logging.debug(f"Completion record for Habit \"{converted_data[0]}\" (ID:{converted_data[1]}) created successfully\"")
 
         except Exception as e:
-            msg = f"Error while record creation for Habit \"{data[0]}\" (ID:{data[1]}):  {type(e).__name__} | {e}"
+            msg = f"Error while record creation for Habit \"{converted_data[0]}\" (ID:{converted_data[1]}):  {type(e).__name__} | {e}"
             logging.critical(msg)
             raise DatabaseUpdateError(reason=msg, original_error=e)
 

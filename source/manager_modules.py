@@ -11,10 +11,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import enumeration classes / USER-DEFINED
-from enums import CompletionStatus
+from source.enums import CompletionStatus
 
 # Import repository modules / USER-DEFINED
-from repository_modules import TaskRepository, CompletionRecordRepository
+from source.repository_modules import TaskRepository, CompletionRecordRepository
 
 #========== SERVICES CLASSES ==========
 
