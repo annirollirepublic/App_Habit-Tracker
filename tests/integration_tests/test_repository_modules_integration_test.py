@@ -1,7 +1,6 @@
 # Test Connection Repositories <> Database
 from unittest.mock import Mock
 
-from source.repository_modules import HabitRepository, TaskRepository, CompletionRecordRepository
 from source.enums import Period, Status
 from source.habit import Habit
 
@@ -12,33 +11,6 @@ from tests.conftest import mock_habit
 
 pytestmark = pytest.mark.integration
 import datetime
-
-# Create a temporary database for testing
-@pytest.fixture(scope="function", name="temp_db_path_for_testing")
-def temp_db_path_for_testing(tmp_path):
-    return str(tmp_path / "temp_db.db")
-
-# Create repo with temporary database path
-@pytest.fixture
-def habit_repo_with_temp_path(temp_db_path_for_testing):
-    return HabitRepository(db_path=temp_db_path_for_testing)
-@pytest.fixture
-def task_repo_with_temp_path(temp_db_path_for_testing):
-    return TaskRepository(db_path=temp_db_path_for_testing)
-@pytest.fixture
-def record_repo_with_temp_path(temp_db_path_for_testing):
-    return CompletionRecordRepository(db_path=temp_db_path_for_testing)
-
-# Create repo with regular database path
-@pytest.fixture
-def habit_repo_with_reg_path(db_path_for_testing):
-    return HabitRepository(db_path=db_path_for_testing)
-@pytest.fixture
-def task_repo_with_reg_path(db_path_for_testing):
-    return TaskRepository(db_path=db_path_for_testing)
-@pytest.fixture
-def record_repo_with_reg_path(db_path_for_testing):
-    return CompletionRecordRepository(db_path=db_path_for_testing)
 
 
 class TestHabitRepositoryIntegrationSetup:

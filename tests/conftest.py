@@ -5,6 +5,7 @@ sys.path.append(os.path.abspath("source"))
 
 from source.analyzer_modules import RecordAnalyzer
 from source.manager_modules import TaskManager
+from source.repository_modules import HabitRepository, TaskRepository, CompletionRecordRepository
 from source.habit import Habit
 from source.task import Task
 from source.enums import Period, Status, CompletionStatus
@@ -14,6 +15,7 @@ import pytest
 from unittest.mock import Mock
 
 # === REPOSITORY MOCKING ===
+# mock unreal dependencies
 @pytest.fixture(scope="function", name="mock_dependencies",)
 def mock_dependencies(mocker):
     """Mocks all dependencies for the repositories, no database connection is required"""
@@ -44,6 +46,33 @@ def mock_dependencies(mocker):
         "TaskManagerClass": MockTaskManager,
         "RecordAnalyzerClass": MockRecordAnalyzer,
     }
+
+# Create a temporary database for testing
+@pytest.fixture(scope="function", name="temp_db_path_for_testing")
+def temp_db_path_for_testing(tmp_path):
+    return str(tmp_path / "temp_db.db")
+
+# Create repo with temporary database path
+@pytest.fixture
+def habit_repo_with_temp_path(temp_db_path_for_testing):
+    return HabitRepository(db_path=temp_db_path_for_testing)
+@pytest.fixture
+def task_repo_with_temp_path(temp_db_path_for_testing):
+    return TaskRepository(db_path=temp_db_path_for_testing)
+@pytest.fixture
+def record_repo_with_temp_path(temp_db_path_for_testing):
+    return CompletionRecordRepository(db_path=temp_db_path_for_testing)
+
+# Create repo with regular database path
+@pytest.fixture
+def habit_repo_with_reg_path(db_path_for_testing):
+    return HabitRepository(db_path=db_path_for_testing)
+@pytest.fixture
+def task_repo_with_reg_path(db_path_for_testing):
+    return TaskRepository(db_path=db_path_for_testing)
+@pytest.fixture
+def record_repo_with_reg_path(db_path_for_testing):
+    return CompletionRecordRepository(db_path=db_path_for_testing)
 
 # === ANALYZER MOCKING ===
 @pytest.fixture(scope="function", name="mock_analyzer")
