@@ -152,9 +152,9 @@ class TaskManager:
         completion_data = (habit.habit_name,
                            habit.habit_id,
                            habit.period.value,
-                           dt_to_string(self.task.due_date),
+                           self.task.due_date,
                            self.task.is_overdue,
-                           dt_to_string(datetime.today()),
+                           datetime.today(),
                            CompletionStatus.COMPLETED.value)
         self.__record_repo.create(completion_data)
 
