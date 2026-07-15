@@ -1,4 +1,4 @@
-# Test Connection TaskManager <> Repositories
+# Test Connection TaskManager <> Repositories <> Database
 import pytest
 from datetime import datetime, timedelta
 
@@ -10,8 +10,7 @@ pytestmark = pytest.mark.integration
 
 # Detailed TaskManager behavior is covered by unit tests with mocked repositories.
 # Repository persistence is covered by repository integration tests.
-# This file should only contain selected smoke tests that verify TaskManager works
-# with real repositories where the layer boundary is especially
+# This file should only contain selected smoke tests that verify TaskManager works with real repositories
 
 # Create task manager with connection to real database
 @pytest.fixture

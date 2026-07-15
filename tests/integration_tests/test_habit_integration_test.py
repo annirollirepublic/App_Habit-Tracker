@@ -2,41 +2,24 @@
 import pytest
 pytestmark = pytest.mark.integration
 
-def test_habit_creation():
-    # creating a habit creates a habit row and task row
+# Detailed habit behavior is covered by unit tests with mocked repositories.
+# Repository persistence is covered by repository integration tests.
+# TaskManager behavior is covered by task_manager_integration_test.py
+# RecordAnalyzer behavior is covered by record_analyzer_integration_test.py
+# This file should only contain selected smoke tests that verify habit works with real repositories
+
+def test_habit_creation_integration():
+    # checks whether habit is created and task is created correctly in database
     pass
 
-def test_habit_rejection_on_duplicate_name():
+def test_habit_task_completion_integration():
+    # checks whether record is created task is completed and updated correctly in database
     pass
 
-def test_habit_task_completion():
-    # completing a habit creates a completion record and next task
+def test_change_naming_integration():
+    # checks whether habit name is changed in database for all corresponding datapoints
     pass
 
-def test_habit_task_skipping():
-    # skipping a habit creates a skipped record and next task
-    pass
-
-def test_pause_habit():
-    # pausing a habit updates habit status and removes current task
-    pass
-
-def test_reactivate_habit():
-    # reactivating a habit updates status and creates current task
-    pass
-
-def test_change_naming():
-    # changing name updates habit and task
-    pass
-
-def test_change_period():
-    # changing period updates habit and task due date
-    pass
-
-def test_delete_habit():
-    # deleting habit removes habit and task
-    pass
-
-def test_calculate_habit_streak():
-    # calculating streak delegates through analyzer using real records
+def test_delete_habit_integration():
+    # checks whether habit and task are deleted from database while records remain
     pass
