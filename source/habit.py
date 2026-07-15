@@ -37,13 +37,20 @@ class Habit:
         habit_name (str): user-specific of the habit,
         period (Period): chosen period by the user
         start_date (datetime): optional chosen start date (default: datetime.today())
+        habit_id (int): existing habit ID (only for loading from DB, default: None)
+        _from_db (bool): internal flag to skip duplicate check and save (default: False)
 
     Note:
         The user has no further influence on how tasks and records are stored.
         TaskManager and the repository interfaces take care about these methods in the background.
     """
 
-    def __init__(self, habit_name: str, period: Period, start_date: datetime = datetime.today()):
+    def __init__(self,
+                 habit_name: str,
+                 period: Period,
+                 start_date: datetime = datetime.today(),
+                 habit_id = None,
+                 _from_db: bool = False):
         """Initiates the Habit object and creates connection to the TaskManager, as well as the repository interfaces
         With initiation of a habit a corresponding Task is directly instantiated by the corresponding TaskManager."""
 
@@ -58,21 +65,37 @@ class Habit:
         self._status = Status.ACTIVE
 
         # Initialize calculated values
-        self._habit_id = None
+        self._habit_id = habit_id
 
-        logger.info(f"Creating Habit '{self.habit_name}' (ID {self._habit_id}).")
+        if not _from_db:
+            logger.info(f"Creating Habit '{self.habit_name}' (ID {self._habit_id}).")
+        else:
+            logger.info(f"Loading Habit '{self.habit_name}' (ID {self._habit_id}) from DB.")
 
-        ## REPOSITORY CONNECTION
+        if not _from_db:
+            # New habit is created -> Create habit repository interface
+            self.__habit_repo = HabitRepository()
 
-        # Connect to habit repository interface
-        self.__habit_repo = HabitRepository()
+            # Check whether input is duplicate - Creation will be blocked if is duplicate
+            if self.__habit_repo.duplicate_naming(self) > 0:
+                raise DuplicateHabitError(habit_name=self._habit_name)
 
-        # Check whether input is duplicate - Creation will be blocked if is duplicate
-        if self.__habit_repo.duplicate_naming(self) > 0:
-            raise DuplicateHabitError(habit_name=self._habit_name)
+            # If a duplicate check is passed, save to the repository and pass to the manager
+            self.__save_habit()
 
-        # If a duplicate check is passed, save to the repository and pass to the manager
-        self.__save_habit()
+        else:
+            # Existing habit is loaded -> Just load repository interfaces
+            self.__habit_repo = HabitRepository()
+            self.__task_repo = TaskRepository()
+            self.__record_repo = CompletionRecordRepository()
+
+            # Task Manager (for further task related methods)
+            self.__task_manager = TaskManager(self.__task_repo, self.__record_repo)
+
+            # Record Analyzer
+            self.__record_analyzer = RecordAnalyzer(self.__record_repo)
+
+            logger.info(f"Habit '{self.habit_name}' (ID {self._habit_id}) loaded successfully.")
 
     @property
     def habit_name(self):
