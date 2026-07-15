@@ -140,7 +140,7 @@ def mock_record_tuple(request):
     return tuple_record
 
 # === DATABASE PATH MOCKING ===
-@pytest.fixture(scope="function", autouse=True, name="db_path_for_testing")
+@pytest.fixture(scope="session", autouse=True, name="db_path_for_testing")
 def db_path_for_testing():
     return str("habit_tracker_test.db")
 
