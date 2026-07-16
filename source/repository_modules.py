@@ -1,3 +1,6 @@
+# Import config
+from source import config
+
 # Import ABC to provide an abstract interface for the repository interfaces / BUILT-IN
 from abc import ABC, abstractmethod
 
@@ -49,8 +52,8 @@ class RepositoryInterface(ABC):
         CompletionRecordRepository.
     """
 
-    def __init__(self, db_path: str = global_db_path):
-        self.db_path = db_path
+    def __init__(self, db_path: str = None):
+        self.db_path = db_path if db_path is not None else config.global_db_path
         self.conn: sqlite3.Connection | None = None
 
     @abstractmethod
@@ -636,11 +639,19 @@ class CompletionRecordRepository(RepositoryInterface):
             logging.critical(msg)
             raise DatabaseFetchDataError(reason=msg, original_error=e)
 
-    def delete(self, data=None):
-        pass  # Is not implemented yet, might make sense later on
-        # ref_id = self.reference.habit_id
-        # self.cursor.execute("DELETE FROM completion_records WHERE habit_id=?", (ref_id,))
-        # self.conn.commit()
+    def delete(self, data : tuple):
+
+        super()._ensure_connection()
+
+        try:
+            self.cursor.execute("DELETE FROM completion_records WHERE habit_id=?", (data[1],))
+            self.conn.commit()
+            logging.debug(f"Records \"{data[0]}\" (ID:{data[1]}) deleted successfully\"")
+
+        except Exception as e:
+            msg = f"Error while record removal for Habit \"{data[0]}\" (ID:{data[1]}):  {type(e).__name__} | {e}"
+            logging.critical(msg)
+            raise DatabaseUpdateError(reason=msg, original_error=e)
 
     def find_by_habit_id(self, input_id: int):
 
