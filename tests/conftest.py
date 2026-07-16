@@ -52,6 +52,18 @@ def mock_dependencies(mocker):
 def temp_db_path_for_testing(tmp_path):
     return str(tmp_path / "temp_db.db")
 
+# === DATABASE PATH MOCKING ===
+@pytest.fixture(scope="session", autouse=True, name="db_path_for_testing")
+def db_path_for_testing():
+    return str("habit_tracker_test.db")
+
+# === MAKE TEST PATH GLOBAL PATH FOR TESTING ===
+@pytest.fixture(autouse=True)
+def override_global_db_path(db_path_for_testing, monkeypatch):
+    """Redirect all database operations to test DB."""
+    from source import config
+    monkeypatch.setattr(config, "global_db_path", db_path_for_testing)
+
 # Create repo with temporary database path
 @pytest.fixture
 def habit_repo_with_temp_path(temp_db_path_for_testing):
@@ -111,6 +123,15 @@ def mock_habit_for_habit_class_tests(request, mock_dependencies):
     name, period = request.param
     return Habit(name, period)
 
+@pytest.fixture
+def all_habits_from_db(habit_repo_with_reg_path):
+    """Load all habits from DB at runtime (not collection time)."""
+    entries = habit_repo_with_reg_path.browse_all()
+    return [
+        (entry["habit_id"], entry["habit_name"], entry["period"], entry["start_date"], entry["status"])
+        for entry in entries
+    ]
+
 # TASK MOCKING
 @pytest.fixture(params=[("Sample Task", 999, datetime(2024, 6, 10), 0)],
                 ids=["Sample Task"])
@@ -138,11 +159,6 @@ def mock_record_tuple(request):
     tuple_record = (habit_name, habit_id, period, due_date, was_overdue, completion_date, completion_status)
 
     return tuple_record
-
-# === DATABASE PATH MOCKING ===
-@pytest.fixture(scope="session", autouse=True, name="db_path_for_testing")
-def db_path_for_testing():
-    return str("habit_tracker_test.db")
 
 # === SAMPLE DATABASE RECORDS ===
 @pytest.fixture(params=[

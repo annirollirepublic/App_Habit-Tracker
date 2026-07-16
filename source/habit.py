@@ -50,6 +50,7 @@ class Habit:
                  period: Period,
                  start_date: datetime = datetime.today(),
                  habit_id = None,
+                 status = Status.ACTIVE,
                  _from_db: bool = False):
         """Initiates the Habit object and creates connection to the TaskManager, as well as the repository interfaces
         With initiation of a habit a corresponding Task is directly instantiated by the corresponding TaskManager."""
@@ -62,7 +63,7 @@ class Habit:
         self._start_date = start_date #datetime format
 
         # Automatic variables
-        self._status = Status.ACTIVE
+        self._status = status
 
         # Initialize calculated values
         self._habit_id = habit_id

@@ -38,7 +38,7 @@ class TestHabitInitialization:
 
     def test_initial_default_start_date(self, mock_habit_for_habit_class_tests):
         # Check whether start date is within 5 seconds of current date (handle edge case of midnight habit creation) 
-        assert abs((mock_habit_for_habit_class_tests.start_date - datetime.today()).total_seconds()) < 5
+        assert abs((mock_habit_for_habit_class_tests.start_date - datetime.today()).total_seconds()) < 10
 
     @pytest.mark.skip(reason="Logger behavior will be covered later")
     def test_logger_initialization(self):

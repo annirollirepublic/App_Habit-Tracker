@@ -2,7 +2,7 @@
 from source.enums import CompletionStatus
 
 # Import datetime module / BUILT-IN
-from datetime import datetime
+from datetime import date, datetime
 
 # Import datetime helper / USER-DEFINED
 from source.utils_datetime_helper import dt_to_string
@@ -53,4 +53,4 @@ class Task:
     #overdue as a dynamic property, since it is recalculated every day
     def is_overdue(self):
         logger.info(f"Calculating whether Task is overdue for Habit '{self.habit_name}' (ID {self.habit_id}).")
-        return self.due_date < datetime.today()
+        return self.due_date.date() < date.today()
