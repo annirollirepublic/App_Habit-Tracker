@@ -221,15 +221,14 @@ class TaskManager:
 
         if isinstance(ref_task, list):
             old_due_date = string_to_dt(ref_task[0]["due_date"]) #conversion from string to datetime format
+            #old_period = ref_task[0]["period"]
         else:
             old_due_date = string_to_dt(ref_task["due_date"])
-
-        # This calculation will only result in a changed due_date if habit start_date or periodicity has changed
-        # If no change in at least one of these attributes, the result of the calculation (incl while loop below) will be the same as old_due_date
-        new_due_date = habit.start_date + timedelta(days=habit.period.value)
+            #old_period = ref_task["period"]
 
         # Handle case where due date is already in the past
         # New due date must be at the same time or after the old due date
+        new_due_date = habit.start_date
         while new_due_date <= old_due_date:
             new_due_date += timedelta(days=habit.period.value)
 
