@@ -1,10 +1,10 @@
 # Import datetime module / BUILT-IN
 from datetime import timedelta, datetime
 # Import datetime helper / USER-DEFINED
-from utils_datetime_helper import string_to_dt, dt_to_string
+from source.utils_datetime_helper import string_to_dt, dt_to_string
 
 # Import task class / USER-DEFINED
-from task import Task
+from source.task import Task
 
 # Set logger
 import logging
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 from source.enums import CompletionStatus
 
 # Import repository modules / USER-DEFINED
-from source.repository_modules import TaskRepository, CompletionRecordRepository
+from source.repository_modules import TaskRepository, CompletionRecordRepository, HabitRepository
 
 #========== SERVICES CLASSES ==========
 
@@ -182,9 +182,9 @@ class TaskManager:
         completion_data = (habit.habit_name,
                            habit.habit_id,
                            habit.period.value,
-                           dt_to_string(self.task.due_date),
+                           self.task.due_date,
                            self.task.is_overdue,
-                           dt_to_string(datetime.today()),
+                           datetime.today(),
                            CompletionStatus.SKIPPED.value)
         self.__record_repo.create(completion_data)
 
@@ -217,33 +217,57 @@ class TaskManager:
             The calculation for the new due_date will be executed also if start_date and periodicity has not changed.
             If there is no change the result will be new_due_date == old_due_date
         """
+        # Get current values from habit table (before update) for reference
+        habit_repo = HabitRepository()
+        old_habit_data = habit_repo.find_by_habit_id(habit.habit_id)
+
+        if not old_habit_data:
+            logger.warning(f"No habit data found for ID {habit.habit_id}. Cannot update task.")
+            return self.task
+
+        old_habit_data = old_habit_data[0] if isinstance(old_habit_data, list) else old_habit_data
+
         ref_task = self.__task_repo.find_by_habit_id(habit.habit_id)
 
-        if isinstance(ref_task, list):
-            old_due_date = string_to_dt(ref_task[0]["due_date"]) #conversion from string to datetime format
-            #old_period = ref_task[0]["period"]
+        # Handle case where no task exists
+        if not ref_task:
+            logger.warning(f"No task found for habit ID {habit.habit_id}. Skipping task update.")
+            return self.task
+
+        ref_task = ref_task[0] if isinstance(ref_task, list) else ref_task
+
+        # Parse old values safely
+        old_start_date = string_to_dt(old_habit_data["start_date"])
+        old_period = int(old_habit_data["period"])
+        old_due_date = string_to_dt(ref_task["due_date"])
+
+        # Check whether time-relevant attributes have changed
+        start_date_changed = old_start_date != habit.start_date
+        period_changed = old_period != habit.period.value
+
+        if start_date_changed or period_changed:
+            # Calculate new due_date
+            new_due_date = habit.start_date
+            while new_due_date <= old_due_date:
+                new_due_date += timedelta(days=habit.period.value)
         else:
-            old_due_date = string_to_dt(ref_task["due_date"])
-            #old_period = ref_task["period"]
+            # Keep existing due_date if neither start_date nor period changed
+            new_due_date = old_due_date
 
-        # Handle case where due date is already in the past
-        # New due date must be at the same time or after the old due date
-        new_due_date = habit.start_date
-        while new_due_date <= old_due_date:
-            new_due_date += timedelta(days=habit.period.value)
+        # Only update task if due_date actually changed
+        if new_due_date != old_due_date or habit.habit_name != old_habit_data["habit_name"]:
+            updated_task = Task(
+                habit_id=habit.habit_id,
+                habit_name=habit.habit_name,
+                due_date=new_due_date,
+                completion_status=CompletionStatus.PENDING
+            )
 
-        updated_task = Task(habit_id=habit.habit_id,
-                         habit_name=habit.habit_name,
-                         due_date=new_due_date,
-                         completion_status=CompletionStatus.PENDING)
+            self.task = updated_task
+            self.__task_repo.update(self.task)
 
-        self.task = updated_task
-
-        self.__task_repo.update(self.task)
-
-        # historical data is not changed, except for the habit_name
-        updated_record_data = (habit.habit_name, habit.habit_id)
-
-        self.__record_repo.update(updated_record_data)
+            # Update historical data (habit_name only)
+            updated_record_data = (habit.habit_name, habit.habit_id)
+            self.__record_repo.update(updated_record_data)
 
         return self.task
