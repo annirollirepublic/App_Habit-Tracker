@@ -1,0 +1,199 @@
+# In this file contains all helper functions that defined for the UI
+# This includes functions for the following purposes
+# - input, validation & confirmation
+# - formatting
+# - layout
+
+# Import datetime for datetime handling / BUILT-IN
+from datetime import datetime, timedelta
+
+# Import helper to handle conversion string to datetime and vice versa / USER-DEFINED
+from source.utils_datetime_helper import string_to_dt, dt_to_string
+
+# Import re for pattern matching / BUILT-IN
+import re
+
+#========== OUTPUT METHODS ==========
+
+def print_confirmation(message: str, success: bool = True):
+    """Prints a confirmation message and waits for Enter."""
+    prefix = "✓" if success else "✗"
+
+    print(f"\n{prefix} {message}\n")
+    input("Press Enter to continue...\n")
+
+
+def print_error(message: str):
+    """Prints an error message and waits for Enter."""
+    print_confirmation(message, success=False)
+
+#========== USER INPUT METHODS ==========
+
+def prompt_input(prompt: str, required: bool = True):
+    """Generic input prompt. Returns None if empty and not required."""
+    # request input from user and strip whitespace
+    value = input(f"{prompt}: ").strip()
+
+    if not value:
+        # if no input was provided and prompt is not required, return None
+        # otherwise, prompt again > recursion
+        return None if not required else prompt_input(prompt, required=True)
+    # if value is not empty, return it
+    return value
+
+
+def confirm(prompt: str = "Continue? (y/n): "):
+    """Asks for y/n confirmation. Returns True for 'y', False for 'n'."""
+    # loop until user enters a valid response
+    while True:
+        # request input from user and strip whitespace
+        value = input(prompt).strip().lower()
+        if value in ["y", "yes"]:
+            return True
+        elif value in ["n", "no"]:
+            return False
+        #else, the loop will continue
+        print("Please enter 'y' or 'n'.")
+
+
+def get_user_shortcut_overview():
+    """
+    Reads a single shortcut from user input.
+
+    Returns lowercase character. Re-prompts if invalid.
+    """
+    valid_shortcuts = "ncsedpraq"
+
+    while True:
+        shortcut = input("> ").strip().lower()
+
+        if not shortcut:
+            continue
+
+        if len(shortcut) == 1 and shortcut in valid_shortcuts:
+            return shortcut
+
+        print("Invalid shortcut. Enter one of: n, c, s, e, d, p, r, a, q")
+
+#========== VALIDATION METHODS ==========
+
+def validate_habit_name(name: str):
+    """Validates habit name. Returns name if valid, None otherwise."""
+    # Currently no validation rules
+    if not name:
+        return None
+
+    # Otherwise name unlikely no make any sense
+    if len(name) < 3:
+        print("Error: Habit name must be at least 3 characters.")
+        return None
+
+    # Otherwise displaying in the overview screen will cause errors
+    if len(name) > 50:
+        print("Error: Habit name must not exceed 50 characters.")
+        return None
+
+    # if re.search(r"[<>\"\\\/]", name):
+    #     print("Error: Habit name contains invalid characters.")
+    #     return None
+
+    return name
+
+
+def validate_period_input(value: str):
+    """Validates period input. Returns int value if valid, None otherwise."""
+    # Currently only daily, weekly, bi-weekly or monthly habits are supported
+    try:
+        days = int(value) # Input value will be a string
+        if days not in [1, 7, 14, 30]:
+            print("Error: Period must be 1, 7, 14, or 30 days.")
+            return None
+        return days
+    except ValueError:
+        print("Error: Please enter a valid number.")
+        return None
+
+
+def validate_date_string(date_str: str) -> datetime | None:
+    """Parses and validates date string in YYYY-MM-DD format."""
+    if not date_str:
+        # If no date is provided, return today's date is the default value
+        return datetime.today()
+    try:
+        # Conversion will fail if the date format is invalid
+        return string_to_dt(date_str)
+    except ValueError:
+        print("Error: Invalid date format. Use YYYY-MM-DD.")
+        return None
+
+#========== FORMATTING METHODS ==========
+
+
+def format_relative_date(due_date: str):
+    """
+    Returns (label, category) for relative date display in the start screen / overview screen.
+    Categories: 'overdue', 'today', 'this_week', 'upcoming'
+    """
+    # Paused habits are requested from habits so need to be handled separately
+
+    # reference date is always today
+    today = datetime.today().date()
+    due_date = string_to_dt(due_date).date()
+    delta_days = (due_date - today).days
+
+    if delta_days < 0:
+        abs_delta = abs(delta_days)
+        label = f"{abs_delta} day{'s' if abs_delta > 1 else ''} overdue"
+        category = "overdue"
+    elif delta_days == 0:
+        label = "today"
+        category = "today"
+    elif delta_days <= 7:
+        label = f"in {delta_days} day{'s' if delta_days > 1 else ''}"
+        category = "this_week"
+    else:
+        label = f"in {delta_days} days"
+        category = "upcoming"
+
+    return label, category
+
+
+def select_from_list(items: list[dict], prompt: str = "Enter number: ") -> int | None:
+    """Displays numbered list and returns selected index (0-based) or None."""
+    for index, item in enumerate(items, 1):
+        name = item.get("habit_name", item.get("name", "Unknown"))
+        extra = ""
+
+        # Add status info if present
+        if item.get("status"):
+            extra = f" ({item['status'].lower()})"
+
+        # Add overdue info if present
+        if item.get("relative_label"):
+            extra = f" ({item['relative_label']})"
+
+        print(f"  [{index}] {name}{extra}")
+
+    try:
+        choice = input(prompt).strip()
+        index = int(choice) - 1
+        if 0 <= index < len(items):
+            return index
+        print("Error: Invalid selection.")
+        return None
+    except ValueError:
+        print("Error: Please enter a number.")
+        return None
+
+
+def print_separator(char: str = "=", length: int = 50) -> None:
+    """Prints a visual separator line."""
+    print(char * length)
+
+
+def print_header(text: str, width: int = 50) -> None:
+    """Prints a formatted header."""
+    print_separator("=")
+    center_text = text.center(width)
+    print(center_text)
+    print_separator("=")
