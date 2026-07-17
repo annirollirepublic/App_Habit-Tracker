@@ -45,6 +45,37 @@ class Habit:
         TaskManager and the repository interfaces take care about these methods in the background.
     """
 
+    @classmethod
+    def from_db(cls, habit_id: int) -> "Habit":
+        """Factory method to load existing habit from database without recreating it."""
+        habit_repo = HabitRepository()
+        habit_data_list = habit_repo.find_by_habit_id(habit_id)
+
+        if not habit_data_list:
+            raise ValueError(f"Habit with ID {habit_id} not found")
+
+        habit_data = habit_data_list[0]
+
+        # Create without running __init__/__save_habit
+        habit = cls.__new__(cls)
+
+        # Set attributes directly
+        habit._habit_id = habit_data["habit_id"]
+        habit._habit_name = habit_data["habit_name"]
+        habit._period = Period(int(habit_data["period"]))
+        habit._start_date = string_to_dt(habit_data["start_date"])
+        habit._status = Status(habit_data["status"])
+
+        # Initialize internal components
+        habit.__habit_repo = HabitRepository()
+        habit.__task_repo = TaskRepository()
+        habit.__record_repo = CompletionRecordRepository()
+        habit.__task_manager = TaskManager(habit.__task_repo, habit.__record_repo)
+        habit.__record_analyzer = RecordAnalyzer(habit.__record_repo)
+
+        return habit
+
+
     def __init__(self,
                  habit_name: str,
                  period: Period,
