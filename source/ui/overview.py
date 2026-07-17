@@ -21,22 +21,28 @@ def get_active_tasks() -> list[dict]:
     """
 
     task_repo = TaskRepository()
+    habit_repo = HabitRepository()
     all_tasks = task_repo.browse_all()
+    all_habits = habit_repo.browse_all()
+
+    active_habit_ids = {habit["habit_id"] for habit in all_habits if habit["status"] == "Active"}
 
     displayed_tasks = []
     for task in all_tasks:
         displayed_task = {}
-        due_date = task["due_date"]
+        if task["habit_id"] in active_habit_ids:
 
-        label, category = format_relative_date(due_date)
+            due_date = task["due_date"]
 
-        displayed_task["habit_name"] = task["habit_name"]
-        displayed_task["habit_id"] = task["habit_id"]
-        displayed_task["due_date"] = due_date
-        displayed_task["label"] = label
-        displayed_task["category"] = category
+            label, category = format_relative_date(due_date)
 
-        displayed_tasks.append(displayed_task)
+            displayed_task["habit_name"] = task["habit_name"]
+            displayed_task["habit_id"] = task["habit_id"]
+            displayed_task["due_date"] = due_date
+            displayed_task["label"] = label
+            displayed_task["category"] = category
+
+            displayed_tasks.append(displayed_task)
 
     return displayed_tasks
 

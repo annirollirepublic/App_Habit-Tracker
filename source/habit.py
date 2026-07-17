@@ -315,3 +315,15 @@ class Habit:
     def calculate_current_streak(self):
 
         return self.__record_analyzer.calculate_streak(self)
+
+    def calculate_longest_streak(self):
+
+        return self.__record_analyzer.calculate_longest_streak(self)
+
+    def complete_rate(self):
+
+        return self.__record_analyzer.calculate_completion_rate(self)
+
+    def finished_ontime_rate(self):
+
+        return self.__record_analyzer.calculate_finished_ontime_rate(self)

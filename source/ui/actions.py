@@ -297,12 +297,15 @@ def view_analytics() -> None:
         return
 
     try:
-        stats = habit.calculate_current_streak()
+        current_streak = habit.calculate_current_streak()
+        longest_streak = habit.calculate_longest_streak()
+        completion_rate = habit.complete_rate()
+        on_time_rate = habit.finished_ontime_rate()
         print(f"\n--- Analytics: {habit.habit_name} ---\n")
-        print(f"  Current streak:    {stats.get('current', 0)} days")
-        print(f"  Longest streak:    {stats.get('longest', 0)} days")
-        print(f"  Completion rate:   {stats.get('rate', 0)*100:.1f}%")
-        print(f"  On-time rate:      {stats.get('on_time', 0)*100:.1f}%")
+        print(f"  Current streak:    {current_streak} days")
+        print(f"  Longest streak:    {longest_streak} days")
+        print(f"  Completion rate:   {completion_rate*100:.1f}%")
+        print(f"  On-time rate:      {on_time_rate*100:.1f}%")
 
         print("\nPress Enter to continue...")
         input()
