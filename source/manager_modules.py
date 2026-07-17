@@ -255,8 +255,12 @@ class TaskManager:
             # Calculate new due_date
             # new due_date should be terminated after last record date
             new_due_date = habit.start_date
-            while new_due_date <= last_record_date:
-                new_due_date += timedelta(days=habit.period.value)
+            if last_record_date:
+                while new_due_date <= last_record_date:
+                    new_due_date += timedelta(days=habit.period.value)
+            else:
+                while new_due_date <= old_due_date:
+                    new_due_date += timedelta(days=habit.period.value)
         else:
             # Keep existing due_date if neither start_date nor period changed
             new_due_date = old_due_date
