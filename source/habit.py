@@ -293,7 +293,7 @@ class Habit:
         self.__habit_repo.update(self)
 
     @start_date.setter
-    def start_date(self, value: str):
+    def start_date(self, value: datetime):
         """With this setter method the user is able to change the habit start_date.
         When the start_date is changed, this function ensures that all dependencies (task (incl due_date), task repository, habit repository) are updated accordingly.
         -> Calls habit repository interface to change the start_date in the habit table
@@ -307,7 +307,7 @@ class Habit:
             None
         """
 
-        self._start_date = string_to_dt(value)
+        self._start_date = value
         logger.info(f" Changing habit start_date to '{self.start_date}' (ID {self._habit_id}).")
         self.__task_manager.update_current_task(self)
         self.__habit_repo.update(self)

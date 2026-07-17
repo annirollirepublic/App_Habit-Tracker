@@ -220,6 +220,12 @@ class TaskManager:
         # Get current values from habit table (before update) for reference
         habit_repo = HabitRepository()
         old_habit_data = habit_repo.find_by_habit_id(habit.habit_id)
+        # Get last record from record table for reference
+        record_repo = CompletionRecordRepository()
+        records = record_repo.find_by_habit_id(habit.habit_id)
+        records_sorted = sorted(records, key=lambda x: string_to_dt(x['completion_date']), reverse=True)
+        last_record = records_sorted[0] if records_sorted else None
+        last_record_date = string_to_dt(last_record["completion_date"]) if last_record else None
 
         if not old_habit_data:
             logger.warning(f"No habit data found for ID {habit.habit_id}. Cannot update task.")
@@ -247,8 +253,9 @@ class TaskManager:
 
         if start_date_changed or period_changed:
             # Calculate new due_date
+            # new due_date should be terminated after last record date
             new_due_date = habit.start_date
-            while new_due_date <= old_due_date:
+            while new_due_date <= last_record_date:
                 new_due_date += timedelta(days=habit.period.value)
         else:
             # Keep existing due_date if neither start_date nor period changed

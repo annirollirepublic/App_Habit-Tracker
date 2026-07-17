@@ -8,4 +8,4 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # Set global database
-global_db_path = "../habit-tracker-data.db"
+global_db_path = "./habit-tracker-data.db"
