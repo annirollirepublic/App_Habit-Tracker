@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Import helper to handle conversion string to datetime and vice versa / USER-DEFINED
-from utils_datetime_helper import string_to_dt
+from source.utils_datetime_helper import string_to_dt
 
 # Import enumeration classes / USER-DEFINED
 from source.enums import Status, Period
@@ -46,7 +46,7 @@ class Habit:
     """
 
     @classmethod
-    def from_db(cls, habit_id: int) -> "Habit":
+    def from_db(cls, habit_id: int):
         """Factory method to load existing habit from database without recreating it."""
         habit_repo = HabitRepository()
         habit_data_list = habit_repo.find_by_habit_id(habit_id)
@@ -66,11 +66,18 @@ class Habit:
         habit._start_date = string_to_dt(habit_data["start_date"])
         habit._status = Status(habit_data["status"])
 
-        # Initialize internal components
+        # Initialize internal repository interfaces
         habit.__habit_repo = HabitRepository()
         habit.__task_repo = TaskRepository()
         habit.__record_repo = CompletionRecordRepository()
+
+        # Initiate Task Manager
         habit.__task_manager = TaskManager(habit.__task_repo, habit.__record_repo)
+
+        # Load existing task from table (or create one if missing)
+        habit.__task_manager.create_first_task(habit)  # ← Das fehlte!
+
+        # Initiate Record Analyzer
         habit.__record_analyzer = RecordAnalyzer(habit.__record_repo)
 
         return habit
@@ -263,8 +270,8 @@ class Habit:
         """
         self._habit_name = value
         logger.info(f" Changing habit name to '{self.habit_name}' (ID {self._habit_id}).")
-        self.__habit_repo.update(self)
         self.__task_manager.update_current_task(self)
+        self.__habit_repo.update(self)
 
     @period.setter
     def period(self, value: Period):
@@ -282,8 +289,8 @@ class Habit:
         """
         self._period = value
         logger.info(f" Changing habit period to '{self.period.value}' days (ID {self._habit_id}).")
-        self.__habit_repo.update(self)
         self.__task_manager.update_current_task(self)
+        self.__habit_repo.update(self)
 
     @start_date.setter
     def start_date(self, value: str):
@@ -302,8 +309,8 @@ class Habit:
 
         self._start_date = string_to_dt(value)
         logger.info(f" Changing habit start_date to '{self.start_date}' (ID {self._habit_id}).")
-        self.__habit_repo.update(self)
         self.__task_manager.update_current_task(self)
+        self.__habit_repo.update(self)
 
     def calculate_current_streak(self):
 
