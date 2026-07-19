@@ -2,9 +2,9 @@
 import pytest
 from datetime import datetime, timedelta
 
-from source.enums import Period
-from source.habit import Habit
-from source.utils_datetime_helper import dt_to_string
+from source.helpers.enums import Period
+from source.app_logic.habit import Habit
+from source.helpers.utils_datetime_helper import dt_to_string
 
 pytestmark = pytest.mark.integration
 

@@ -1,11 +1,10 @@
 # Import enumeration classes / USER-DEFINED
-from source.enums import CompletionStatus
+from source.helpers.enums import CompletionStatus
 
 # Import datetime module / BUILT-IN
 from datetime import date, datetime
 
 # Import datetime helper / USER-DEFINED
-from source.utils_datetime_helper import dt_to_string
 
 # Set logger
 import logging

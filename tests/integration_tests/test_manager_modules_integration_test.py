@@ -2,8 +2,8 @@
 import pytest
 from datetime import datetime, timedelta
 
-from source.manager_modules import TaskManager
-from source.utils_datetime_helper import dt_to_string
+from source.app_logic.manager_modules import TaskManager
+from source.helpers.utils_datetime_helper import dt_to_string
 from tests.conftest import task_repo_with_temp_path
 
 pytestmark = pytest.mark.integration

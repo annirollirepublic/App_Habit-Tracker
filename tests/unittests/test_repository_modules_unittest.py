@@ -1,6 +1,6 @@
 from unittest.mock import Mock
-from source.exceptions import DatabaseFetchDataError
-from source.repository_modules import HabitRepository
+from source.helpers.exceptions import DatabaseFetchDataError
+from source.repository.repository_modules import HabitRepository
 
 import pytest
 pytestmark = pytest.mark.unit

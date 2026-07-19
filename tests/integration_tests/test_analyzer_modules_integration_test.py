@@ -2,8 +2,8 @@
 import pytest
 pytestmark = pytest.mark.integration
 
-from source.analyzer_modules import RecordAnalyzer
-from source.habit import Habit
+from source.app_logic.analyzer_modules import RecordAnalyzer
+from source.app_logic.habit import Habit
 
 # Detailed RecordAnalyzer calculations are covered by unit tests with mocked records.
 # CompletionRecordRepository persistence is covered by repository integration tests.

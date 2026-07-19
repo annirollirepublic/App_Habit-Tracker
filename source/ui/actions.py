@@ -8,13 +8,12 @@
 # - view analytics
 
 # Import Habit class for API access / USER-DEFINED
-from source.habit import Habit
+from source.app_logic.habit import Habit
 
 # Import repository modules for data access / USER-DEFINED
-from source.repository_modules import HabitRepository
 
 # Import enums / USER-DEFINED
-from source.enums import Period
+from source.helpers.enums import Period
 
 # Import helpers for input, validation, and formatting / USER-DEFINED
 from source.ui.helpers import *

@@ -8,6 +8,7 @@ from source.ui.actions import *
 # Import OS for clearing the terminal / BUILT-IN
 import os
 
+# TODO : The must be a way to exit selected operations
 
 # Shortcut to action mapping
 SHORTCUT_MAP = {

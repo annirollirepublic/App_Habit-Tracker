@@ -2,7 +2,7 @@
 from datetime import datetime
 
 # Import exceptions and logging for activity screening and debugging / BUILT-IN
-from source.exceptions import *
+from source.helpers.exceptions import *
 
 # Set logger
 import logging
@@ -10,19 +10,19 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Import helper to handle conversion string to datetime and vice versa / USER-DEFINED
-from source.utils_datetime_helper import string_to_dt
+from source.helpers.utils_datetime_helper import string_to_dt
 
 # Import enumeration classes / USER-DEFINED
-from source.enums import Status, Period
+from source.helpers.enums import Status, Period
 
 # Import manager modules / USER-DEFINED
-from source.manager_modules import TaskManager
+from source.app_logic.manager_modules import TaskManager
 
 # Import analyzer modules / USER-DEFINED
-from source.analyzer_modules import RecordAnalyzer
+from source.app_logic.analyzer_modules import RecordAnalyzer
 
 # Import repository modules / USER-DEFINED
-from source.repository_modules import HabitRepository, TaskRepository, CompletionRecordRepository
+from source.repository.repository_modules import HabitRepository, TaskRepository, CompletionRecordRepository
 
 class Habit:
     """

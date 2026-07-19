@@ -5,10 +5,9 @@
 # - render shortcuts
 
 # Import datetime for datetime handling / BUILT-IN
-from datetime import datetime
 
 # Import repository modules for data access / USER-DEFINED
-from source.repository_modules import HabitRepository, TaskRepository
+from source.repository.repository_modules import HabitRepository, TaskRepository
 from source.ui.helpers import *
 
 #========== COLLECT INFORMATION ==========
@@ -151,7 +150,7 @@ def render_overview() -> None:
         for index, task in enumerate(tasks, 1):
             name = task["habit_name"]
             label = task["label"]
-            print(f"  [{index}] {name:<50} — {label}")
+            print(f"  [{index}] {name:<30} — {label}")
 
     # Render paused section (different layout)
     if paused_habits:
@@ -159,7 +158,7 @@ def render_overview() -> None:
         for index, habit in enumerate(paused_habits, 1):
             name = habit["habit_name"]
             label = habit["start_date"]
-            print(f"  [{index}] {name:<50} — original start_date {label}")
+            print(f"  [{index}] {name:<30} — original start_date {label}")
 
     # Render shortcut legend
     render_shortcut_legend()

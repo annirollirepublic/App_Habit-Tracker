@@ -1,20 +1,20 @@
 # Import datetime module / BUILT-IN
 from datetime import timedelta, datetime
 # Import datetime helper / USER-DEFINED
-from source.utils_datetime_helper import string_to_dt, dt_to_string
+from source.helpers.utils_datetime_helper import string_to_dt
 
 # Import task class / USER-DEFINED
-from source.task import Task
+from source.app_logic.task import Task
 
 # Set logger
 import logging
 logger = logging.getLogger(__name__)
 
 # Import enumeration classes / USER-DEFINED
-from source.enums import CompletionStatus
+from source.helpers.enums import CompletionStatus
 
 # Import repository modules / USER-DEFINED
-from source.repository_modules import TaskRepository, CompletionRecordRepository, HabitRepository
+from source.repository.repository_modules import TaskRepository, CompletionRecordRepository, HabitRepository
 
 #========== SERVICES CLASSES ==========
 

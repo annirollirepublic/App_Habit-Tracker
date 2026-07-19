@@ -1,12 +1,12 @@
 # Test Connection Repositories <> Database
 from unittest.mock import Mock
 
-from source.enums import Period, Status
-from source.habit import Habit
+from source.helpers.enums import Period
+from source.app_logic.habit import Habit
 
 import pytest
 
-from source.utils_datetime_helper import dt_to_string, string_to_dt
+from source.helpers.utils_datetime_helper import dt_to_string
 from tests.conftest import mock_habit
 
 pytestmark = pytest.mark.integration

@@ -1,7 +1,6 @@
-from source.exceptions import DuplicateHabitError
-from source.utils_datetime_helper import dt_to_string
-from source.habit import Habit
-from source.enums import Period, Status
+from source.helpers.exceptions import DuplicateHabitError
+from source.app_logic.habit import Habit
+from source.helpers.enums import Period, Status
 
 import pytest
 pytestmark = pytest.mark.unit

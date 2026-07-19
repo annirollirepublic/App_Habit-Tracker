@@ -3,12 +3,12 @@ import sys, os
 # add source folder to path
 sys.path.append(os.path.abspath("source"))
 
-from source.analyzer_modules import RecordAnalyzer
-from source.manager_modules import TaskManager
-from source.repository_modules import HabitRepository, TaskRepository, CompletionRecordRepository
-from source.habit import Habit
-from source.task import Task
-from source.enums import Period, Status, CompletionStatus
+from source.app_logic.analyzer_modules import RecordAnalyzer
+from source.app_logic.manager_modules import TaskManager
+from source.repository.repository_modules import HabitRepository, TaskRepository, CompletionRecordRepository
+from source.app_logic.habit import Habit
+from source.app_logic.task import Task
+from source.helpers.enums import Period, Status, CompletionStatus
 
 from datetime import datetime
 import pytest
