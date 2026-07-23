@@ -4,10 +4,8 @@ from datetime import datetime
 # Import exceptions and logging for activity screening and debugging / BUILT-IN
 from source.helpers.exceptions import *
 
-# Set logger
+# Import logger
 import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 # Import helper to handle conversion string to datetime and vice versa / USER-DEFINED
 from source.helpers.utils_datetime_helper import string_to_dt
@@ -23,6 +21,10 @@ from source.app_logic.analyzer_modules import RecordAnalyzer
 
 # Import repository modules / USER-DEFINED
 from source.repository.repository_modules import HabitRepository, TaskRepository, CompletionRecordRepository
+
+# Set logger setup
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class Habit:
     """
@@ -47,13 +49,25 @@ class Habit:
 
     @classmethod
     def from_db(cls, habit_id: int):
-        """Factory method to load existing habit from database without recreating it."""
+        """Loading existing habit from database without recreating it.
+        This is necessary to launch habits for app operations from database.
+        Practically this means this methods ensures the possibility to create a habit for
+        all habit related operations without starting the initialization process.
+
+        Args:
+            habit_id (int): ID of the habit to be loaded from database
+
+        Returns:
+            habit (Habit): Habit object with all attributes loaded from database"""
+
+        # Load habit data from database
         habit_repo = HabitRepository()
         habit_data_list = habit_repo.find_by_habit_id(habit_id)
 
         if not habit_data_list:
             raise ValueError(f"Habit with ID {habit_id} not found")
 
+        # Extract habit data
         habit_data = habit_data_list[0]
 
         # Create without running __init__/__save_habit
@@ -80,8 +94,10 @@ class Habit:
         # Initiate Record Analyzer
         habit.__record_analyzer = RecordAnalyzer(habit.__record_repo)
 
-        return habit
+        # Logging
+        logger.info(f"Creating Habit '{self.habit_name}' (ID {self._habit_id}).")
 
+        return habit
 
     def __init__(self,
                  habit_name: str,
@@ -106,6 +122,7 @@ class Habit:
         # Initialize calculated values
         self._habit_id = habit_id
 
+        # Logging
         if not _from_db:
             logger.info(f"Creating Habit '{self.habit_name}' (ID {self._habit_id}).")
         else:
@@ -154,7 +171,10 @@ class Habit:
 
     # INTERNAL CALLS
 
-    def __save_habit(self) -> None:
+    def __save_habit(self):
+        """Private method to save habit to a repository and create a corresponding task.
+        This will only be called internally if a habit is newly created.
+        Loading habits from database will not trigger this method."""
 
         try:
             # Create habit entry
@@ -313,17 +333,63 @@ class Habit:
         self.__habit_repo.update(self)
 
     def calculate_current_streak(self):
+        """Calculates the current streak of the habit.
+        -> Calls the Record Analyzer to calculate the streak
+
+        Args:
+            None
+
+        Returns:
+            streak (Float): current streak"""
 
         return self.__record_analyzer.calculate_streak(self)
 
     def calculate_longest_streak(self):
+        """Calculates the longest streak of the habit.
+        -> Calls the Record Analyzer to calculate the longest streak
+
+        Args:
+            None
+
+        Returns:
+            longest_streak (Float): longest streak"""
 
         return self.__record_analyzer.calculate_longest_streak(self)
 
     def complete_rate(self):
+        """Calculates the completion rate of the habit.
+        The completion rate is the ratio between
+        the number of completed records and the total number of records (incl skipped).
+        -> Calls the Record Analyzer to calculate the completion rate
+
+        Args:
+            None
+
+        Returns:
+            ratio (Float): completion rate"""
 
         return self.__record_analyzer.calculate_completion_rate(self)
 
     def finished_ontime_rate(self):
+        """Calculates the finished ontime rate of the habit.
+        The finished ontime rate is the ratio between
+        the number of completed records that were not overdue and the total number of records (incl skipped).
+
+        Args:
+            None
+
+        Returns:
+            ratio (Float): finished on time rate"""
 
         return self.__record_analyzer.calculate_finished_ontime_rate(self)
+
+    def get_habit_history(self):
+        """Returns a list of all completion records for a given habit.
+
+        Args:
+            None
+
+        Returns:
+            habit_history (list): List of all completion records for habit"""
+
+        return self.__record_analyzer.habit_history(self)
