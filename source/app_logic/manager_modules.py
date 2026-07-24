@@ -72,7 +72,7 @@ class TaskManager:
         Returns:
             Task: Task with new due_date"""
 
-        logger.info(f"Creating new task for habit {habit.habit_name} (ID {habit.habit_id})")
+        logger.info(f"APP: Creating new task for habit {habit.habit_name} (ID {habit.habit_id})")
 
         # Get relevant information on referenced "old" task from repository
         ref_task = self.__task_repo.find_by_habit_id(habit.habit_id)
@@ -108,7 +108,7 @@ class TaskManager:
             Task: The created Task object will be returned
         """
 
-        logger.info(f"Creating first task for habit {habit.habit_name} (ID {habit.habit_id})")
+        logger.info(f"APP: Creating first task for habit {habit.habit_name} (ID {habit.habit_id})")
 
         # Check whether task to habit already exists
         # There should be only one task per habit
@@ -238,7 +238,7 @@ class TaskManager:
 
         # Handle case where no habit data exists
         if not old_habit_data:
-            logger.warning(f"No habit data found for ID {habit.habit_id}. Cannot update task.")
+            logger.warning(f"APP: No habit data found for ID {habit.habit_id}. Cannot update task.")
             return self.task
 
         old_habit_data = old_habit_data[0] if isinstance(old_habit_data, list) else old_habit_data
@@ -257,7 +257,7 @@ class TaskManager:
 
         # Handle case where no task exists
         if not ref_task:
-            logger.warning(f"No task found for habit ID {habit.habit_id}. Skipping task update.")
+            logger.warning(f"APP: No task found for habit ID {habit.habit_id}. Skipping task update.")
             return self.task
 
         ref_task = ref_task[0] if isinstance(ref_task, list) else ref_task

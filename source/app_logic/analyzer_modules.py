@@ -1,18 +1,11 @@
 # Import datetime helper / USER-DEFINED
 from source.helpers.utils_datetime_helper import string_to_dt
 
-# Import logging for activity screening and debugging / BUILT-IN
-import logging
-
 # Import enumeration classes / USER-DEFINED
 from source.helpers.enums import CompletionStatus
 
 # Import repository modules / USER-DEFINED
 from source.repository.repository_modules import CompletionRecordRepository
-
-# Set logger setup
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 #========== SERVICES CLASSES ==========
 

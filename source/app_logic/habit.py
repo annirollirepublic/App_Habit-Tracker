@@ -2,7 +2,7 @@
 from datetime import datetime
 
 # Import exceptions and logging for activity screening and debugging / BUILT-IN
-from source.helpers.exceptions import *
+from source.helpers.exceptions import CreationFromDatabaseError, DuplicateHabitError
 
 # Import logging for activity screening and debugging / BUILT-IN
 import logging
@@ -44,68 +44,72 @@ class Habit:
 
     Note:
         The user has no further influence on how tasks and records are stored.
-        TaskManager and the repository interfaces take care about these methods in the background.
+        TaskManager and the repository interfaces take care of these methods in the background.
     """
 
     @classmethod
     def from_db(cls, habit_id: int):
-        """Loading existing habit from database without recreating it.
-        This is necessary to launch habits for app operations from database.
-        Practically this means this methods ensures the possibility to create a habit for
-        all habit related operations without starting the initialization process.
+        """Loading existing habit from the database without recreating it.
+        This is necessary to launch habits for app operations from the database.
+        Practically, this means this method ensures the possibility to create a habit for
+        all habit-related operations without starting the initialization process.
 
         Args:
-            habit_id (int): ID of the habit to be loaded from database
+            habit_id (int): ID of the habit to be loaded from the database
 
         Returns:
-            habit (Habit): Habit object with all attributes loaded from database"""
+            habit (Habit): Habit object with all attributes loaded from the database"""
+
+        logger.info(f"APP: Loading Habit from DB with ID {habit_id}.")
 
         # Load habit data from database
         habit_repo = HabitRepository()
         habit_data_list = habit_repo.find_by_habit_id(habit_id)
 
         if not habit_data_list:
+            logger.error(f"APP: No habit data found for ID {habit_id}. Cannot load habit.")
             raise ValueError(f"Habit with ID {habit_id} not found")
 
         # Extract habit data
         habit_data = habit_data_list[0]
 
         # Create without running __init__/__save_habit
-        habit = cls.__new__(cls)
+        try:
+            habit = cls.__new__(cls)
 
-        # Set attributes directly
-        habit._habit_id = habit_data["habit_id"]
-        habit._habit_name = habit_data["habit_name"]
-        habit._period = Period(int(habit_data["period"]))
-        habit._start_date = string_to_dt(habit_data["start_date"])
-        habit._status = Status(habit_data["status"])
+            # Set attributes directly
+            habit._habit_id = habit_data["habit_id"]
+            habit._habit_name = habit_data["habit_name"]
+            habit._period = Period(int(habit_data["period"]))
+            habit._start_date = string_to_dt(habit_data["start_date"])
+            habit._status = Status(habit_data["status"])
 
-        # Initialize internal repository interfaces
-        habit.__habit_repo = HabitRepository()
-        habit.__task_repo = TaskRepository()
-        habit.__record_repo = CompletionRecordRepository()
+            # Initialize internal repository interfaces
+            habit.__habit_repo = HabitRepository()
+            habit.__task_repo = TaskRepository()
+            habit.__record_repo = CompletionRecordRepository()
 
-        # Initiate Task Manager
-        habit.__task_manager = TaskManager(habit.__task_repo, habit.__record_repo)
+            # Initiate Task Manager
+            habit.__task_manager = TaskManager(habit.__task_repo, habit.__record_repo)
 
-        # Load existing task from table (or create one if missing)
-        habit.__task_manager.create_first_task(habit)  # ← Das fehlte!
+            # Load existing task from table (or create one if missing)
+            habit.__task_manager.create_first_task(habit)
 
-        # Initiate Record Analyzer
-        habit.__record_analyzer = RecordAnalyzer(habit.__record_repo)
+            # Initiate Record Analyzer
+            habit.__record_analyzer = RecordAnalyzer(habit.__record_repo)
 
-        # Logging
-        logger.info(f"Creating Habit '{self.habit_name}' (ID {self._habit_id}).")
+            return habit
 
-        return habit
+        except Exception as e:
+            logger.critical(f"APP: Habit could not be created from database: {e}")
+            raise CreationFromDatabaseError(reason=str(e), original_error=e)
 
     def __init__(self,
                  habit_name: str,
                  period: Period,
                  start_date: datetime = datetime.today(),
                  habit_id = None,
-                 status = Status.ACTIVE,
-                 _from_db: bool = False):
+                 status = Status.ACTIVE):
         """Initiates the Habit object and creates connection to the TaskManager, as well as the repository interfaces
         With initiation of a habit a corresponding Task is directly instantiated by the corresponding TaskManager."""
 
@@ -122,36 +126,17 @@ class Habit:
         # Initialize calculated values
         self._habit_id = habit_id
 
-        # Logging
-        if not _from_db:
-            logger.info(f"Creating Habit '{self.habit_name}' (ID {self._habit_id}).")
-        else:
-            logger.info(f"Loading Habit '{self.habit_name}' (ID {self._habit_id}) from DB.")
+        logger.info(f"APP: Creating Habit object '{self.habit_name}' (ID {self._habit_id}).")
 
-        if not _from_db:
-            # New habit is created -> Create habit repository interface
-            self.__habit_repo = HabitRepository()
+        # Create habit repository interface
+        self.__habit_repo = HabitRepository()
 
-            # Check whether input is duplicate - Creation will be blocked if is duplicate
-            if self.__habit_repo.duplicate_naming(self) > 0:
-                raise DuplicateHabitError(habit_name=self._habit_name)
+        # Check whether input is duplicate - Creation will be blocked if is duplicate
+        if self.__habit_repo.duplicate_naming(self) > 0:
+            raise DuplicateHabitError(habit_name=self._habit_name)
 
-            # If a duplicate check is passed, save to the repository and pass to the manager
-            self.__save_habit()
-
-        else:
-            # Existing habit is loaded -> Just load repository interfaces
-            self.__habit_repo = HabitRepository()
-            self.__task_repo = TaskRepository()
-            self.__record_repo = CompletionRecordRepository()
-
-            # Task Manager (for further task related methods)
-            self.__task_manager = TaskManager(self.__task_repo, self.__record_repo)
-
-            # Record Analyzer
-            self.__record_analyzer = RecordAnalyzer(self.__record_repo)
-
-            logger.info(f"Habit '{self.habit_name}' (ID {self._habit_id}) loaded successfully.")
+        # If a duplicate check is passed, save to the repository and pass to the manager
+        self.__save_habit()
 
     @property
     def habit_name(self):
@@ -174,7 +159,7 @@ class Habit:
     def __save_habit(self):
         """Private method to save habit to a repository and create a corresponding task.
         This will only be called internally if a habit is newly created.
-        Loading habits from database will not trigger this method."""
+        Loading habits from the database will not trigger this method."""
 
         try:
             # Create habit entry
@@ -185,7 +170,7 @@ class Habit:
             self.__task_repo = TaskRepository()
             self.__record_repo = CompletionRecordRepository()
 
-            ## TASK MANAGER (for further task related methods)
+            ## TASK MANAGER (for further task-related methods)
 
             # Initiate Task Manager
             self.__task_manager = TaskManager(self.__task_repo, self.__record_repo)
@@ -195,7 +180,7 @@ class Habit:
             # Initiate Record Analyzer
             self.__record_analyzer = RecordAnalyzer(self.__record_repo)
 
-            logger.info(f"Habit '{self.habit_name}' (ID {self._habit_id}) created successfully.")
+            logger.debug(f"APP: Habit '{self.habit_name}' (ID {self._habit_id}) data saved to repositories.")
 
         except Exception as e:
             logger.error(f"Error while creation of Habit '{self.habit_name}' (ID {self._habit_id}): {e}")
@@ -211,7 +196,7 @@ class Habit:
             None
         """
 
-        logger.info(f" Completing current task for Habit '{self.habit_name}' (ID {self._habit_id}).")
+        logger.info(f"APP: Completing current task for Habit '{self.habit_name}' (ID {self._habit_id}).")
         self.__task_manager.complete_current_task(self)
 
     def skip(self):
@@ -222,7 +207,7 @@ class Habit:
             None
         """
 
-        logger.info(f" Skipping current task for Habit '{self.habit_name}' (ID {self._habit_id}).")
+        logger.info(f"APP: Skipping current task for Habit '{self.habit_name}' (ID {self._habit_id}).")
         self.__task_manager.skip_current_task(self)
 
     # ADMINISTRATION
@@ -230,7 +215,7 @@ class Habit:
     def pause(self):
         """Sets habit status to "Paused" (only if it has been "Active" before)
         -> Calls habit repository interface to update the habit table
-        -> Calls task manager to remove corresponding task from task table
+        -> Calls task manager to remove the corresponding task from the task table
 
         Returns:
             None
@@ -238,7 +223,7 @@ class Habit:
 
         #Missing the check whether habit has been active before.
         self._status = Status.PAUSED
-        logger.info(f" Pausing Habit '{self.habit_name}' (ID {self._habit_id}).")
+        logger.info(f"APP: Pausing Habit '{self.habit_name}' (ID {self._habit_id}).")
         self.__habit_repo.update(self)
         self.__task_manager.delete_current_task(self)
 
@@ -253,15 +238,15 @@ class Habit:
 
         # Missing the check whether habit has been paused before.
         self._status = Status.ACTIVE
-        logger.info(f" Reactivating Habit '{self.habit_name}' (ID {self._habit_id}).")
+        logger.info(f"APP: Reactivating Habit '{self.habit_name}' (ID {self._habit_id}).")
         self.__habit_repo.update(self)
         # Create the first task entry
         self.__task_manager.create_first_task(self)
 
     def delete(self):
-        """Deletes habit from habit table and all corresponding tasks
-        -> Calls habit repository interface to delete the habit from habit table
-        -> Calls task manager to delete corresponding task from task table
+        """Deletes habit from the habit table and all corresponding tasks
+        -> Calls habit repository interface to delete the habit from the habit table
+        -> Calls task manager to delete the corresponding task from the task table
 
         Returns:
             None
@@ -270,7 +255,7 @@ class Habit:
             Right now it is unclear how to handle the corresponding records.
         """
 
-        logger.info(f" Deleting Habit '{self.habit_name}' (ID {self._habit_id}).")
+        logger.info(f"APP: Deleting Habit '{self.habit_name}' (ID {self._habit_id}).")
         self.__habit_repo.delete(self)
         self.__task_manager.delete_current_task(self)
 
@@ -289,7 +274,7 @@ class Habit:
             None
         """
         self._habit_name = value
-        logger.info(f" Changing habit name to '{self.habit_name}' (ID {self._habit_id}).")
+        logger.info(f"APP: Changing habit name to '{self.habit_name}' (ID {self._habit_id}).")
         self.__task_manager.update_current_task(self)
         self.__habit_repo.update(self)
 
@@ -308,7 +293,7 @@ class Habit:
             None
         """
         self._period = value
-        logger.info(f" Changing habit period to '{self.period.value}' days (ID {self._habit_id}).")
+        logger.info(f"APP: Changing habit period to '{self.period.value}' days (ID {self._habit_id}).")
         self.__task_manager.update_current_task(self)
         self.__habit_repo.update(self)
 
@@ -328,7 +313,7 @@ class Habit:
         """
 
         self._start_date = value
-        logger.info(f" Changing habit start_date to '{self.start_date}' (ID {self._habit_id}).")
+        logger.info(f"APP: Changing habit start_date to '{self.start_date}' (ID {self._habit_id}).")
         self.__task_manager.update_current_task(self)
         self.__habit_repo.update(self)
 
@@ -342,6 +327,7 @@ class Habit:
         Returns:
             streak (Float): current streak"""
 
+        logger.info(f"APP: Calculating current strike for habit '{self.start_date}' (ID {self._habit_id}).")
         return self.__record_analyzer.calculate_streak(self)
 
     def calculate_longest_streak(self):
@@ -354,6 +340,7 @@ class Habit:
         Returns:
             longest_streak (Float): longest streak"""
 
+        logger.info(f"APP: Calculating longest strike for habit '{self.start_date}' (ID {self._habit_id}).")
         return self.__record_analyzer.calculate_longest_streak(self)
 
     def complete_rate(self):
@@ -368,11 +355,12 @@ class Habit:
         Returns:
             ratio (Float): completion rate"""
 
+        logger.info(f"APP: Calculating completion rate for habit '{self.start_date}' (ID {self._habit_id}).")
         return self.__record_analyzer.calculate_completion_rate(self)
 
     def finished_ontime_rate(self):
-        """Calculates the finished ontime rate of the habit.
-        The finished ontime rate is the ratio between
+        """Calculates the finished on-time rate of the habit.
+        The finished on-time rate is the ratio between
         the number of completed records that were not overdue and the total number of records (incl skipped).
 
         Args:
@@ -381,6 +369,7 @@ class Habit:
         Returns:
             ratio (Float): finished on time rate"""
 
+        logger.info(f"APP: Calculating on-time rate for habit '{self.start_date}' (ID {self._habit_id}).")
         return self.__record_analyzer.calculate_finished_ontime_rate(self)
 
     def get_habit_history(self):
@@ -392,4 +381,5 @@ class Habit:
         Returns:
             habit_history (list): List of all completion records for habit"""
 
+        logger.info(f"APP: Request history for habit '{self.start_date}' (ID {self._habit_id}).")
         return self.__record_analyzer.habit_history(self)

@@ -88,7 +88,7 @@ class RepositoryInterface(ABC):
         """This method ensures that a database connection is available.
         It checks if a connection is already open, and if not, attempts to create a new one."""
 
-        logger.info(f"Checking for open connection")
+        logger.info(f"SQL: Checking for open connection")
 
         # Check if a connection is already open
         if self.conn is not None:
@@ -101,7 +101,7 @@ class RepositoryInterface(ABC):
                 self.conn = None
                 self.cursor = None
 
-        logger.info(f"No open connection available. Creating new connection")
+        logger.info(f"SQL: No open connection available. Creating new connection")
 
         # Create a new connection
         try:
@@ -110,7 +110,7 @@ class RepositoryInterface(ABC):
             # Set up the database scheme
             self._create_scheme()
         except sqlite3.Error as e:
-            logger.critical(f"Failed to create database connection: {type(e).__name__} | {e}")
+            logger.critical(f"SQL: Failed to create database connection: {type(e).__name__} | {e}")
             raise DatabaseConnectionError(reason=str(e), original_error=e)
 
 
@@ -142,7 +142,7 @@ class HabitRepository(RepositoryInterface):
     def _create_scheme(self):
         """Sets up the database scheme for the habit table if it does not exist."""
 
-        logger.info(f"Setting up scheme for habit table")
+        logger.info(f"SQL: Setting up scheme for habit table")
 
         # Set up the database scheme with all relevant columns
         try:
@@ -155,15 +155,15 @@ class HabitRepository(RepositoryInterface):
                                        status     TEXT    NOT NULL
                                    )""")
             self.conn.commit()
-            logger.debug(f"Scheme for habit table set up successfully")
+            logger.debug(f"SQL: Scheme for habit table set up successfully")
 
         except Exception as e:
-            logger.critical(f"Failed to set up scheme for habit table: {type(e).__name__} | {e}")
+            logger.critical(f"SQL: Failed to set up scheme for habit table: {type(e).__name__} | {e}")
             raise DatabaseSchemeError(reason=str(e), original_error=e)
 
     def _fetch_data(self) -> list[dict[str, Any]] | list[Any]:
 
-        logger.info(f"Fetching data from habit table")
+        logger.info(f"SQL: Fetching data from habit table")
 
         try:
             # Fetch all data from the database
@@ -182,7 +182,7 @@ class HabitRepository(RepositoryInterface):
                 return []
 
         except Exception as e:
-            logger.critical(f"Failed to fetch data from habit table: {type(e).__name__} | {e}")
+            logger.critical(f"SQL: Failed to fetch data from habit table: {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
     def duplicate_naming(self, habit) -> int:
@@ -191,7 +191,7 @@ class HabitRepository(RepositoryInterface):
         super()._ensure_connection()
         input_name = habit.habit_name
 
-        logger.info(f"Checking for duplicate habit name: {input_name.lower()}")
+        logger.info(f"SQL: Checking for duplicate habit name: {input_name.lower()}")
 
         # Search for name (lowercase) in database and check how many entries are returned
         # Return number of duplicates (0 if no duplicates)
@@ -202,7 +202,7 @@ class HabitRepository(RepositoryInterface):
             return len(duplicates_list)
 
         except Exception as e:
-            logger.error(f"Error while checking for duplicate habit name:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while checking for duplicate habit name:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
     def get_largest_id(self) -> int:
@@ -210,7 +210,7 @@ class HabitRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Fetching largest ID")
+        logger.info(f"SQL: Fetching largest ID")
 
         try:
             # Get all IDs as list
@@ -222,7 +222,7 @@ class HabitRepository(RepositoryInterface):
             return max(id_list, default=0)
 
         except Exception as e:
-            logger.error(f"Error while fetching largest ID:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while fetching largest ID:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
     def create(self, habit) -> None:
@@ -242,17 +242,17 @@ class HabitRepository(RepositoryInterface):
                 dt_to_string(habit.start_date),  # converted datetime
                 habit.status.value)
 
-        logger.info(f"Creating datapoint for habit: {habit.habit_name} (ID:{habit.habit_id})")
+        logger.info(f"SQL: Creating datapoint for habit: {habit.habit_name} (ID:{habit.habit_id})")
 
         # Insert data into database, if no duplicate is found
         if self.duplicate_naming(habit) == 0:
             try:
                 self.cursor.execute("INSERT INTO habits VALUES (?, ?, ?, ?, ?)", data)
                 self.conn.commit()
-                logger.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) created successfully\"")
+                logger.debug(f"SQL: Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) created successfully\"")
 
             except Exception as e:
-                logger.error(f"Error while creating Habit \"{habit.habit_name}\" (ID:{habit.habit_id}):  {type(e).__name__} | {e}")
+                logger.error(f"SQL: Error while creating Habit \"{habit.habit_name}\" (ID:{habit.habit_id}):  {type(e).__name__} | {e}")
                 raise DatabaseUpdateError(reason=str(e), original_error=e)
 
         else:
@@ -274,7 +274,7 @@ class HabitRepository(RepositoryInterface):
                 dt_to_string(habit.start_date),  # converted datetime
                 habit.status.value)
 
-        logger.info(f"Update datapoint for habit: {habit.habit_name} (ID:{habit.habit_id})")
+        logger.info(f"SQL: Update datapoint for habit: {habit.habit_name} (ID:{habit.habit_id})")
 
         if self.duplicate_naming(habit) > 1:
             print("This habit already exists! Please edit the existing habit or choose a different name for your new habit.")
@@ -283,10 +283,10 @@ class HabitRepository(RepositoryInterface):
             self.cursor.execute("UPDATE habits SET habit_name=?, period=?, start_date=?, status=? WHERE habit_id=?",
                                 (*data, habit.habit_id))
             self.conn.commit()
-            logger.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) updated successfully\"")
+            logger.debug(f"SQL: Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) updated successfully\"")
 
         except Exception as e:
-            logger.error(f"Error while updating Habit \"{habit.habit_name}\" (ID:{habit.habit_id}):  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while updating Habit \"{habit.habit_name}\" (ID:{habit.habit_id}):  {type(e).__name__} | {e}")
             raise DatabaseUpdateError(reason=str(e), original_error=e)
 
     def delete(self, habit) -> None:
@@ -298,16 +298,16 @@ class HabitRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Deleting habit datapoint")
+        logger.info(f"SQL: Deleting habit datapoint")
 
         # Delete habit with specific habit_id
         try:
             self.cursor.execute("DELETE FROM habits WHERE habit_id=?", (habit.habit_id,))
             self.conn.commit()
-            logger.debug(f"Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) deleted successfully\"")
+            logger.debug(f"SQL: Habit \"{habit.habit_name}\" (ID:{habit.habit_id}) deleted successfully\"")
 
         except Exception as e:
-            logger.error(f"Error while deleting Habit \"{habit.habit_name}\" (ID:{habit.habit_id}):  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while deleting Habit \"{habit.habit_name}\" (ID:{habit.habit_id}):  {type(e).__name__} | {e}")
             raise DatabaseUpdateError(reason=str(e), original_error=e)
 
     def find_by_habit_id(self, input_id: int) -> list[dict[str, Any]] | list[Any]:
@@ -323,7 +323,7 @@ class HabitRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Searching for habit with ID: {input_id}")
+        logger.info(f"SQL: Searching for habit with ID: {input_id}")
 
         try:
             # Search for ID in database
@@ -332,7 +332,7 @@ class HabitRepository(RepositoryInterface):
             return self._fetch_data()
 
         except Exception as e:
-            logger.error(f"Error while reading habit table:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while reading habit table:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
     def find_by_habit_name(self, input_name: str) -> list[dict[str, Any]] | list[Any]:
@@ -348,7 +348,7 @@ class HabitRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Searching for habit with name: {input_name}")
+        logger.info(f"SQL: Searching for habit with name: {input_name}")
 
         try:
             # Search for name (lowercase) in database
@@ -358,7 +358,7 @@ class HabitRepository(RepositoryInterface):
             return self._fetch_data()
 
         except Exception as e:
-            logger.error(f"Error while reading habit table:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while reading habit table:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
     def browse_all(self) -> list[dict[str, Any]] | list[Any]:
@@ -371,7 +371,7 @@ class HabitRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Browsing all habits")
+        logger.info(f"SQL: Browsing all habits")
 
         try:
             # Get all entries
@@ -379,7 +379,7 @@ class HabitRepository(RepositoryInterface):
             return self._fetch_data()
 
         except Exception as e:
-            logger.error(f"Error while reading habit table:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while reading habit table:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
 
@@ -409,7 +409,7 @@ class TaskRepository(RepositoryInterface):
     def _create_scheme(self) -> None:
         """Sets up the database scheme for the task table if it does not exist."""
 
-        logger.info(f"Setting up scheme for task table")
+        logger.info(f"SQL: Setting up scheme for task table")
 
         # Set up the database scheme with all relevant columns
         try:
@@ -422,15 +422,15 @@ class TaskRepository(RepositoryInterface):
                                        completion_status TEXT    NOT NULL
                                    )""")
             self.conn.commit()
-            logger.debug(f"Scheme for task table set up successfully")
+            logger.debug(f"SQL: Scheme for task table set up successfully")
 
         except Exception as e:
-            logger.critical(f"Error while setting up scheme for task table:  {type(e).__name__} | {e}")
+            logger.critical(f"SQL: Error while setting up scheme for task table:  {type(e).__name__} | {e}")
             raise DatabaseSchemeError(reason=str(e), original_error=e)
 
     def _fetch_data(self) -> list[dict[str, Any]] | list[Any]:
 
-        logger.info(f"Fetching data from task table")
+        logger.info(f"SQL: Fetching data from task table")
 
         try:
             # Fetch all data from the database
@@ -449,7 +449,7 @@ class TaskRepository(RepositoryInterface):
                 return []
 
         except Exception as e:
-            logger.critical(f"Error while fetching data from task table:  {type(e).__name__} | {e}")
+            logger.critical(f"SQL: Error while fetching data from task table:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
     def create(self, task: Task) -> None:
@@ -468,16 +468,16 @@ class TaskRepository(RepositoryInterface):
                 task.is_overdue,
                 task.completion_status.value)
 
-        logger.info(f"Creating task for habit: {task.habit_name} (ID:{task.habit_id})")
+        logger.info(f"SQL: Creating task for habit: {task.habit_name} (ID:{task.habit_id})")
 
         # Insert data into database
         try:
             self.cursor.execute("INSERT INTO tasks VALUES (?, ?, ?, ?, ?)", data)
             self.conn.commit()
-            logger.debug(f"Task for habit \"{task.habit_name}\" (ID:{task.habit_id}) created successfully\"")
+            logger.debug(f"SQL: Task for habit \"{task.habit_name}\" (ID:{task.habit_id}) created successfully\"")
 
         except Exception as e:
-            logger.error(f"Error while creating task for Habit \"{task.habit_name}\" (ID:{task.habit_id}):  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while creating task for Habit \"{task.habit_name}\" (ID:{task.habit_id}):  {type(e).__name__} | {e}")
             raise DatabaseUpdateError(reason=str(e), original_error=e)
 
     def update(self, task: Task) -> None:
@@ -494,17 +494,17 @@ class TaskRepository(RepositoryInterface):
                 task.is_overdue,
                 task.completion_status.value)
 
-        logger.info(f"Updating task for habit: {task.habit_name} (ID:{task.habit_id})")
+        logger.info(f"SQL: Updating task for habit: {task.habit_name} (ID:{task.habit_id})")
 
         try:
             self.cursor.execute(
                 "UPDATE tasks SET habit_name=?, due_date=?, is_overdue=?, completion_status=? WHERE habit_id=?",
                 (*data, task.habit_id))
             self.conn.commit()
-            logger.debug(f"Task \"{task.habit_name}\" (ID:{task.habit_id}) updated successfully\"")
+            logger.debug(f"SQL: Task \"{task.habit_name}\" (ID:{task.habit_id}) updated successfully\"")
 
         except Exception as e:
-            logger.error(f"Error while updating task for Habit \"{task.habit_name}\" (ID:{task.habit_id}):  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while updating task for Habit \"{task.habit_name}\" (ID:{task.habit_id}):  {type(e).__name__} | {e}")
             raise DatabaseUpdateError(reason=str(e), original_error=e)
 
     def delete(self, task: Task) -> None:
@@ -515,16 +515,16 @@ class TaskRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Deleting task for habit: {task.habit_name} (ID:{task.habit_id})")
+        logger.info(f"SQL: Deleting task for habit: {task.habit_name} (ID:{task.habit_id})")
 
         # Delete task with specific habit_id
         try:
             self.cursor.execute("DELETE FROM tasks WHERE habit_id=?", (task.habit_id,))
             self.conn.commit()
-            logger.debug(f"Task \"{task.habit_name}\" (ID:{task.habit_id}) deleted successfully\"")
+            logger.debug(f"SQL: Task \"{task.habit_name}\" (ID:{task.habit_id}) deleted successfully\"")
 
         except Exception as e:
-            logger.error(f"Error while deleting task for Habit \"{task.habit_name}\" (ID:{task.habit_id}):  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while deleting task for Habit \"{task.habit_name}\" (ID:{task.habit_id}):  {type(e).__name__} | {e}")
             raise DatabaseUpdateError(reason=str(e), original_error=e)
 
     def find_by_habit_id(self, input_id: int) -> list[dict[str, Any]] | list[Any]:
@@ -539,7 +539,7 @@ class TaskRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Searching for task with ID: {input_id}")
+        logger.info(f"SQL: Searching for task with ID: {input_id}")
 
         try:
             # Search for ID in database
@@ -549,7 +549,7 @@ class TaskRepository(RepositoryInterface):
             return self._fetch_data()
 
         except Exception as e:
-            logger.error(f"Error while reading task table:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while reading task table:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
     def find_by_habit_name(self, input_name: str) -> list[dict[str, Any]] | list[Any]:
@@ -564,7 +564,7 @@ class TaskRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Searching for task with name: {input_name}")
+        logger.info(f"SQL: Searching for task with name: {input_name}")
 
         try:
             # Search for name (lowercase) in database
@@ -574,7 +574,7 @@ class TaskRepository(RepositoryInterface):
             return self._fetch_data()
 
         except Exception as e:
-            logger.error(f"Error while reading task table:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while reading task table:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
     def browse_all(self) -> list[dict[str, Any]] | list[Any]:
@@ -587,7 +587,7 @@ class TaskRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Browsing all tasks")
+        logger.info(f"SQL: Browsing all tasks")
 
         try:
             # Get all entries
@@ -595,7 +595,7 @@ class TaskRepository(RepositoryInterface):
             return self._fetch_data()
 
         except Exception as e:
-            logger.error(f"Error while reading task table:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while reading task table:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
 
@@ -627,7 +627,7 @@ class CompletionRecordRepository(RepositoryInterface):
     def _create_scheme(self) -> None:
         """Sets up the database scheme for the record table if it does not exist."""
 
-        logger.info(f"Setting up scheme for completion_records table")
+        logger.info(f"SQL: Setting up scheme for completion_records table")
 
         # Set up the database scheme with all relevant columns
         try:
@@ -642,15 +642,15 @@ class CompletionRecordRepository(RepositoryInterface):
                                         completion_status TEXT    NOT NULL
                                     )""")
             self.conn.commit()
-            logger.debug(f"Scheme for completion_records table set up successfully")
+            logger.debug(f"SQL: Scheme for completion_records table set up successfully")
 
         except Exception as e:
-            logger.critical(f"Error while setting up scheme for completion_records table:  {type(e).__name__} | {e}")
+            logger.critical(f"SQL: Error while setting up scheme for completion_records table:  {type(e).__name__} | {e}")
             raise DatabaseSchemeError(reason=str(e), original_error=e)
 
     def _fetch_data(self) -> list[dict[str, Any]] | list[Any]:
 
-        logger.info(f"Fetching data from completion_records table")
+        logger.info(f"SQL: Fetching data from completion_records table")
 
         try:
             # Fetch all data from the database
@@ -671,7 +671,7 @@ class CompletionRecordRepository(RepositoryInterface):
                 return []
 
         except Exception as e:
-            logger.critical(f"Error while fetching data from completion_records table:  {type(e).__name__} | {e}")
+            logger.critical(f"SQL: Error while fetching data from completion_records table:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
     def _convert_tuple(self, data: tuple) -> tuple:
@@ -707,10 +707,10 @@ class CompletionRecordRepository(RepositoryInterface):
         try:
             self.cursor.execute("INSERT INTO completion_records VALUES (?, ?, ?, ?, ?, ?, ?)", converted_data)
             self.conn.commit()
-            logger.debug(f"Completion record for Habit \"{converted_data[0]}\" (ID:{converted_data[1]}) created successfully\"")
+            logger.debug(f"SQL: Completion record for Habit \"{converted_data[0]}\" (ID:{converted_data[1]}) created successfully\"")
 
         except Exception as e:
-            logger.error(f"Error while creating completion_records table:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while creating completion_records table:  {type(e).__name__} | {e}")
             raise DatabaseUpdateError(reason=str(e), original_error=e)
 
     def update(self, data: tuple) -> None:
@@ -721,7 +721,7 @@ class CompletionRecordRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Updating completion record for habit: {data[0]} (ID:{data[1]})")
+        logger.info(f"SQL: Updating completion record for habit: {data[0]} (ID:{data[1]})")
 
         try:
             # Update database
@@ -729,10 +729,10 @@ class CompletionRecordRepository(RepositoryInterface):
                 "UPDATE main.completion_records SET habit_name=? WHERE habit_id=?",
                 data)
             self.conn.commit()
-            logging.debug(f"Completion record for Habit \"{data[0]}\" (ID:{data[1]}) updated successfully\"")
+            logging.debug(f"SQL: Completion record for Habit \"{data[0]}\" (ID:{data[1]}) updated successfully\"")
 
         except Exception as e:
-            logger.error(f"Error while updating completion_records table:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while updating completion_records table:  {type(e).__name__} | {e}")
             raise DatabaseUpdateError(reason=str(e), original_error=e)
 
     def delete(self, data : tuple) -> None:
@@ -744,15 +744,15 @@ class CompletionRecordRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Deleting completion record for habit: {data[0]} (ID:{data[1]})")
+        logger.info(f"SQL: Deleting completion record for habit: {data[0]} (ID:{data[1]})")
 
         try:
             self.cursor.execute("DELETE FROM completion_records WHERE habit_id=?", (data[1],))
             self.conn.commit()
-            logger.debug(f"Records to \"{data[0]}\" (ID:{data[1]}) deleted successfully\"")
+            logger.debug(f"SQL: Records to \"{data[0]}\" (ID:{data[1]}) deleted successfully\"")
 
         except Exception as e:
-            logger.error(f"Error while deleting completion_records table:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while deleting completion_records table:  {type(e).__name__} | {e}")
             raise DatabaseUpdateError(reason=str(e), original_error=e)
 
     def find_by_habit_id(self, input_id: int) -> list[dict[str, Any]] | list[Any]:
@@ -767,7 +767,7 @@ class CompletionRecordRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Searching for completion_records with ID: {input_id}")
+        logger.info(f"SQL: Searching for completion_records with ID: {input_id}")
 
         try:
             # Search for ID in database
@@ -777,7 +777,7 @@ class CompletionRecordRepository(RepositoryInterface):
             return self._fetch_data()
 
         except Exception as e:
-            logger.error(f"Error while reading completion_records table:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while reading completion_records table:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
     def find_by_habit_name(self, input_name: str) -> list[dict[str, Any]] | list[Any]:
@@ -792,7 +792,7 @@ class CompletionRecordRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Searching for completion_records with name: {input_name}")
+        logger.info(f"SQL: Searching for completion_records with name: {input_name}")
 
         try:
             # Search for name (lowercase) in database
@@ -802,7 +802,7 @@ class CompletionRecordRepository(RepositoryInterface):
             return self._fetch_data()
 
         except Exception as e:
-            logger.error(f"Error while reading completion_records table:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while reading completion_records table:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
 
     def browse_all(self) -> list[dict[str, Any]] | list[Any]:
@@ -815,7 +815,7 @@ class CompletionRecordRepository(RepositoryInterface):
 
         super()._ensure_connection()
 
-        logger.info(f"Browsing all completion_records")
+        logger.info(f"SQL: Browsing all completion_records")
 
         try:
             # Get all entries
@@ -823,5 +823,5 @@ class CompletionRecordRepository(RepositoryInterface):
             return self._fetch_data()
 
         except Exception as e:
-            logger.error(f"Error while reading completion_records table:  {type(e).__name__} | {e}")
+            logger.error(f"SQL: Error while reading completion_records table:  {type(e).__name__} | {e}")
             raise DatabaseFetchDataError(reason=str(e), original_error=e)
