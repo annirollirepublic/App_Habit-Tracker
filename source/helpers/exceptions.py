@@ -38,3 +38,10 @@ class DuplicateHabitError(AppError):
     def __init__(self, habit_name: str):
         reason = f"Habit \"{habit_name}\" already exists in database."
         super().__init__(reason)
+
+class CreationFromDatabaseError(AppError):
+    # Raised exception when a habit cannot be created from the database
+    def __init__(self, reason: str, original_error: Exception | None = None):
+        super().__init__(reason,
+                         {"reason": reason, "error_type": type(original_error).__name__ if original_error else None})
+        self.original_exception = original_error
