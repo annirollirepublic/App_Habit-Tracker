@@ -1,7 +1,5 @@
 class AppError(Exception):
-    """
-    Base class for exceptions in this application
-    """
+    # Base class for exceptions in this application
     def __init__(self, message: str, details: dict | None = None):
         super().__init__(message)
         self.message = message

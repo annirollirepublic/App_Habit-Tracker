@@ -4,11 +4,12 @@ from source.helpers.enums import CompletionStatus
 # Import datetime module / BUILT-IN
 from datetime import date, datetime
 
-# Import datetime helper / USER-DEFINED
-
-# Set logger
+# Import logging for activity screening and debugging / BUILT-IN
 import logging
+
+# Set logger setup
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Note: Possible Implementation of Task as @dataclass, to get rid of the __init__ and equality, when task properties are equal
 # For now no practical use of dataclasses, since the Task objects are never compared

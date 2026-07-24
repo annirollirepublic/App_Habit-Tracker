@@ -4,7 +4,7 @@ from datetime import datetime
 # Import exceptions and logging for activity screening and debugging / BUILT-IN
 from source.helpers.exceptions import *
 
-# Import logger
+# Import logging for activity screening and debugging / BUILT-IN
 import logging
 
 # Import helper to handle conversion string to datetime and vice versa / USER-DEFINED
