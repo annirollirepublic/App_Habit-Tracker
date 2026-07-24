@@ -103,6 +103,29 @@ class RecordAnalyzer:
             return 0
         return ontime_records / total_records
 
+    def habit_history(self, habit):
+        """Returns a list of all completion records for a given habit."""
+
+        # Get all records for a given habit
+        ref_records = self.record_repo.find_by_habit_id(habit.habit_id)
+
+        ref_records = ref_records
+
+        # Bring records into chronological order
+        ref_records_sorted = sorted(ref_records, key=lambda x: string_to_dt(x['due_date']), reverse=True)
+
+        # Bring records into human-readable format
+        ref_records_formatted = []
+        for record in ref_records_sorted:
+            ref_records_formatted.append({
+                "habit_name": record["habit_name"],
+                "completion_date": record["completion_date"],
+                "completion_status": record["completion_status"],
+                "was_overdue": record["was_overdue"]
+            })
+
+        return ref_records_formatted
+
 #------------NOT IMPLEMENTED YET------------
 
     def calculate_most_consistent_habit(self):

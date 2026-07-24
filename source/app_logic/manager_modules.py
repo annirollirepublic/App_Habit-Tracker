@@ -47,12 +47,15 @@ class TaskManager:
         """Initiates the TaskManager object and creates connection to the repository interfaces of tasks and completion records.
         """
 
+        # Ensure connections to necessary repositories
         self.__task_repo = task_repo
         self.__record_repo = record_repo
+
+        # Corresponding Task will be initialized later
         self.task = None
 
     def __create_new_task(self, habit):
-        """Handles the deletion of an old task creation of a new one with updated due_date
+        """Private method to handle the deletion of an old task creation of a new one with updated due_date
         -> Calls the Task repository to get the old task by ID of the corresponding habit
         -> Calculates next due_date with the last due_date and the periodicity from the habit
         -> Calls the Task repository to delete the old task datapoint by ID
@@ -62,12 +65,11 @@ class TaskManager:
             habit(Habit): Habit for which the task should be deleted and created
 
         Returns:
-            Task: Task with new due_date
-        """
+            Task: Task with new due_date"""
 
         logger.info(f"Creating new task for habit {habit.habit_name} (ID {habit.habit_id})")
 
-        # Get relevant information on referenced task from repository
+        # Get relevant information on referenced "old" task from repository
         ref_task = self.__task_repo.find_by_habit_id(habit.habit_id)
         if isinstance(ref_task, list):
             next_due_date = string_to_dt(ref_task[0]["due_date"]) + timedelta(days=habit.period.value)
@@ -103,8 +105,11 @@ class TaskManager:
 
         logger.info(f"Creating first task for habit {habit.habit_name} (ID {habit.habit_id})")
 
+        # Check whether task to habit already exists
+        # There should be only one task per habit
         ref_task = self.__task_repo.find_by_habit_id(habit.habit_id)
 
+        # If no task exists, create a new one
         if not ref_task:
             # Calculate the due_date and make a new entry
             due_date = habit.start_date #datetime format
@@ -119,6 +124,7 @@ class TaskManager:
             self.__task_repo.create(self.task)
             return self.task
 
+        # If a task exists, instantiate it
         else:
             if isinstance(ref_task, list):
                 existing_task = ref_task[0]
@@ -199,12 +205,15 @@ class TaskManager:
         """Processes the deletion of tasks by ID
         -> Calls Task repository to remove the task from table by ID
         """
+
         self.__task_repo.delete(self.task)
 
     def update_current_task(self, habit):
         """Processes the update of a task, according to changes in the habit
+        - Request the habit table to get the current values of the habit
+        - Request the record table to get the last record of the habit for re-calculation
         - Call the task repository to get the corresponding task entry
-        - Re-calculate due_date under consideration of start_date and periodicity of habit
+        - Re-calculate task attributes according to changes in the habit
         - Call the task repository to change the task entry attributes according to changes in the habit
 
         Args:
@@ -217,22 +226,28 @@ class TaskManager:
             The calculation for the new due_date will be executed also if start_date and periodicity has not changed.
             If there is no change the result will be new_due_date == old_due_date
         """
+
         # Get current values from habit table (before update) for reference
         habit_repo = HabitRepository()
         old_habit_data = habit_repo.find_by_habit_id(habit.habit_id)
-        # Get last record from record table for reference
-        record_repo = CompletionRecordRepository()
-        records = record_repo.find_by_habit_id(habit.habit_id)
-        records_sorted = sorted(records, key=lambda x: string_to_dt(x['completion_date']), reverse=True)
-        last_record = records_sorted[0] if records_sorted else None
-        last_record_date = string_to_dt(last_record["completion_date"]) if last_record else None
 
+        # Handle case where no habit data exists
         if not old_habit_data:
             logger.warning(f"No habit data found for ID {habit.habit_id}. Cannot update task.")
             return self.task
 
         old_habit_data = old_habit_data[0] if isinstance(old_habit_data, list) else old_habit_data
 
+        # Get last record from record table for reference
+        record_repo = CompletionRecordRepository()
+        records = record_repo.find_by_habit_id(habit.habit_id)
+
+        # Sort records by completion date in descending order
+        records_sorted = sorted(records, key=lambda x: string_to_dt(x['completion_date']), reverse=True)
+        last_record = records_sorted[0] if records_sorted else None
+        last_record_date = string_to_dt(last_record["completion_date"]) if last_record else None
+
+        # Get current task from task table
         ref_task = self.__task_repo.find_by_habit_id(habit.habit_id)
 
         # Handle case where no task exists
@@ -242,7 +257,7 @@ class TaskManager:
 
         ref_task = ref_task[0] if isinstance(ref_task, list) else ref_task
 
-        # Parse old values safely
+        # Parse old habit data and get relevant attributes for re-calculation
         old_start_date = string_to_dt(old_habit_data["start_date"])
         old_period = int(old_habit_data["period"])
         old_due_date = string_to_dt(ref_task["due_date"])
@@ -251,6 +266,7 @@ class TaskManager:
         start_date_changed = old_start_date != habit.start_date
         period_changed = old_period != habit.period.value
 
+        # Handle case where start_date or period has changed
         if start_date_changed or period_changed:
             # Calculate new due_date
             # new due_date should be terminated after last record date

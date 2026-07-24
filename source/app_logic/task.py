@@ -10,7 +10,7 @@ from datetime import date, datetime
 import logging
 logger = logging.getLogger(__name__)
 
-# TODO : Possible Implementation of Task as @dataclass, to get rid of the __init__ and equality, when task properties are equal
+# Note: Possible Implementation of Task as @dataclass, to get rid of the __init__ and equality, when task properties are equal
 # For now no practical use of dataclasses, since the Task objects are never compared
 
 class Task:
