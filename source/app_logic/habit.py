@@ -94,7 +94,9 @@ class Habit:
             habit.__task_manager = TaskManager(habit.__task_repo, habit.__record_repo)
 
             # Load existing task from table (or create one if missing)
-            habit.__task_manager.create_first_task(habit)
+            # Only create task if habit is active, otherwise skip
+            if habit._status == Status.ACTIVE:
+                habit.__task_manager.create_first_task(habit)
 
             # Initiate Record Analyzer
             habit.__record_analyzer = RecordAnalyzer(habit.__record_repo)
