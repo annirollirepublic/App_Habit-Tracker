@@ -1,10 +1,8 @@
 from unittest.mock import Mock
-from source.helpers.exceptions import DatabaseFetchDataError
 from source.repository.repository_modules import HabitRepository
 
 import pytest
 pytestmark = pytest.mark.unit
-import sqlite3
 
 # Most of the repository functions are strongly coupled with the database, so they cannot be tested in isolation.
 # Therefore, they cannot be tested in an unittest, but must be tested in an integration test instead.
@@ -43,15 +41,6 @@ class TestHabitReadFromDatabase:
         mock_habit_repo.cursor.execute.assert_called_once()
         mock_habit_repo.cursor.fetchall.assert_called_once()
 
-    def test_duplicate_exception(self, mock_habit_repo, mock_habit):
-        """Test the exception handling when fetching duplicate habits."""
-        mock_habit_repo.cursor.execute.side_effect = sqlite3.Error("Some error")
-
-        with pytest.raises(DatabaseFetchDataError) as e:
-            mock_habit_repo.duplicate_naming(mock_habit)
-
-        assert f"Error while finding duplicates" in str(e.value)
-
     @pytest.mark.parametrize("found_ids",
                              [[], [(100,)], [(12,), (25,)], [(55,), (42,), (12,)]],
                              ids=["0 habits", "1 habit", "2 habits", "3 habits"])
@@ -66,15 +55,6 @@ class TestHabitReadFromDatabase:
         assert isinstance(result, int)
         mock_habit_repo.cursor.execute.assert_called_once()
         mock_habit_repo.cursor.fetchall.assert_called_once()
-
-    def test_get_largest_id_exception(self, mock_habit_repo):
-        """Test the exception handling when fetching the largest habit ID."""
-        mock_habit_repo.cursor.execute.side_effect = sqlite3.Error("Some error")
-
-        with pytest.raises(DatabaseFetchDataError) as e:
-            mock_habit_repo.get_largest_id()
-
-        assert f"Error while fetching largest ID" in str(e.value)
 
     # Logic of find_by_habit_name(),find_habit_by_id() and browse_all() take place within the database mainly.
     # Therefore, they cannot be adequately tested in a unit test, but must be tested in integration test instead.

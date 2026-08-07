@@ -78,7 +78,7 @@ class TestTaskManagerInteraction:
         mock_dependencies["task_repo"].find_by_habit_id.return_value = [sample_task]
 
         # Mock HabitRepository inside TaskManager module (source.manager_modules)
-        mock_habit_repo = mocker.patch("source.manager_modules.HabitRepository")
+        mock_habit_repo = mocker.patch("source.app_logic.manager_modules.HabitRepository")
         mock_habit_repo.return_value.find_by_habit_id.return_value = [{
             "habit_name": "Old Name",  # Different name triggers update
             "habit_id": mock_habit.habit_id,
@@ -88,7 +88,7 @@ class TestTaskManagerInteraction:
         }]
 
         # Mock CompletionRecordRepository inside TaskManager module
-        mock_record_repo = mocker.patch("source.manager_modules.CompletionRecordRepository")
+        mock_record_repo = mocker.patch("source.app_logic.manager_modules.CompletionRecordRepository")
         mock_record_repo.return_value.find_by_habit_id.return_value = []  # No records → last_record_date = None
 
         result = mock_manager.update_current_task(mock_habit)
@@ -108,7 +108,7 @@ class TestTaskManagerInteraction:
         mock_dependencies["task_repo"].find_by_habit_id.return_value = [sample_task]
 
         # Mock HabitRepository with DIFFERENT period
-        mock_habit_repo = mocker.patch("source.manager_modules.HabitRepository")
+        mock_habit_repo = mocker.patch("source.app_logic.manager_modules.HabitRepository")
         mock_habit_repo.return_value.find_by_habit_id.return_value = [{
             "habit_name": "Different Name",
             "habit_id": mock_habit.habit_id,
@@ -118,7 +118,7 @@ class TestTaskManagerInteraction:
         }]
 
         # Mock CompletionRecordRepository with no records
-        mock_record_repo = mocker.patch("source.manager_modules.CompletionRecordRepository")
+        mock_record_repo = mocker.patch("source.app_logic.manager_modules.CompletionRecordRepository")
         mock_record_repo.return_value.find_by_habit_id.return_value = []
 
         result = mock_manager.update_current_task(mock_habit)
@@ -142,7 +142,7 @@ class TestTaskManagerInteraction:
         mock_dependencies["task_repo"].find_by_habit_id.return_value = [sample_task]
 
         # Mock HabitRepository with EXACTLY SAME data
-        mock_habit_repo = mocker.patch("source.manager_modules.HabitRepository")
+        mock_habit_repo = mocker.patch("source.app_logic.manager_modules.HabitRepository")
         mock_habit_repo.return_value.find_by_habit_id.return_value = [{
             "habit_name": mock_habit.habit_name,  # SAME
             "habit_id": mock_habit.habit_id,
@@ -152,7 +152,7 @@ class TestTaskManagerInteraction:
         }]
 
         # Mock CompletionRecordRepository with no records
-        mock_record_repo = mocker.patch("source.manager_modules.CompletionRecordRepository")
+        mock_record_repo = mocker.patch("source.app_logic.manager_modules.CompletionRecordRepository")
         mock_record_repo.return_value.find_by_habit_id.return_value = []
 
         result = mock_manager.update_current_task(mock_habit)
@@ -169,7 +169,7 @@ class TestTaskManagerInteraction:
         mock_dependencies["task_repo"].find_by_habit_id.return_value = [sample_task]
 
         # Mock HabitRepository with CHANGED period (triggers recalculation)
-        mock_habit_repo = mocker.patch("source.manager_modules.HabitRepository")
+        mock_habit_repo = mocker.patch("source.app_logic.manager_modules.HabitRepository")
         mock_habit_repo.return_value.find_by_habit_id.return_value = [{
             "habit_name": "Changed Name",
             "habit_id": mock_habit.habit_id,
@@ -179,7 +179,7 @@ class TestTaskManagerInteraction:
         }]
 
         # Mock CompletionRecordRepository WITH records (so last_record_date is set)
-        mock_record_repo = mocker.patch("source.manager_modules.CompletionRecordRepository")
+        mock_record_repo = mocker.patch("source.app_logic.manager_modules.CompletionRecordRepository")
         mock_record_repo.return_value.find_by_habit_id.return_value = [
             {
                 "habit_name": mock_habit.habit_name,

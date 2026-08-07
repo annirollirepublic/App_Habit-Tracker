@@ -58,8 +58,7 @@ def test_habit_creation_from_db_integration(all_habits_from_db, task_repo_with_r
         if habit.status.value == "Active":
             assert len(task_entry) == 1
         else:
-            assert task_entry == 0
-            #assert len(task_entry) == 0
+            assert len(task_entry) == 0
 
 def test_habit_task_completion_integration(task_repo_with_reg_path, record_repo_with_reg_path):
     expected_new_task_record = [{"habit_name": "Other Habit",
