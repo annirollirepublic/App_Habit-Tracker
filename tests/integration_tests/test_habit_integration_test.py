@@ -1,10 +1,12 @@
 # Test Connection Habits <> Repositories, TaskManager, RecordAnalyzer <> Database
+from enum import Enum
+
 import pytest
 from datetime import datetime, timedelta
 
 from source.helpers.enums import Period
 from source.app_logic.habit import Habit
-from source.helpers.utils_datetime_helper import dt_to_string
+from source.helpers.utils_datetime_helper import dt_to_string, string_to_dt
 
 pytestmark = pytest.mark.integration
 
@@ -28,7 +30,7 @@ def test_habit_creation_new_integration(habit_repo_with_reg_path, task_repo_with
                              "completion_status": "Pending"}]
 
     # checks whether habit is created and task is created correctly in database
-    new_habit = Habit("Other Habit", Period.DAILY, _from_db=False)
+    new_habit = Habit("Other Habit", Period.DAILY)
 
     assert habit_repo_with_reg_path.find_by_habit_id(new_habit.habit_id) == expected_habit_record
     assert task_repo_with_reg_path.find_by_habit_id(new_habit.habit_id) == expected_task_record
@@ -43,20 +45,21 @@ def test_habit_creation_new_integration(habit_repo_with_reg_path, task_repo_with
 def test_habit_creation_from_db_integration(all_habits_from_db, task_repo_with_reg_path):
     # checks whether habit is created and task is created correctly in database
     for habit_id, habit_name, period, start_date, status in all_habits_from_db:
-        habit = Habit(habit_name, period, start_date, habit_id, status,True)
+        habit = Habit.from_db(habit_id)
 
         assert habit.habit_id == habit_id
         assert habit.habit_name == habit_name
-        assert habit.start_date == start_date
-        assert habit.period == period
-        assert habit.status == status
+        assert dt_to_string(habit.start_date) == start_date
+        assert habit.period.value == period
+        assert habit.status.value == status
 
         task_entry = task_repo_with_reg_path.find_by_habit_id(habit.habit_id)
 
-        if habit.status == "Active":
+        if habit.status.value == "Active":
             assert len(task_entry) == 1
         else:
-            assert len(task_entry) == 0
+            assert task_entry == 0
+            #assert len(task_entry) == 0
 
 def test_habit_task_completion_integration(task_repo_with_reg_path, record_repo_with_reg_path):
     expected_new_task_record = [{"habit_name": "Other Habit",
@@ -65,7 +68,7 @@ def test_habit_task_completion_integration(task_repo_with_reg_path, record_repo_
                              "is_overdue": 0,
                              "completion_status": "Pending"}]
 
-    new_habit = Habit("Other Habit", Period.DAILY, _from_db=False)
+    new_habit = Habit("Other Habit", Period.DAILY)
 
     new_habit.complete()
     # Force flush + slight delay
@@ -95,7 +98,7 @@ def test_change_naming_integration(habit_repo_with_reg_path, task_repo_with_reg_
                                      "is_overdue": 0,
                                      "completion_status": "Pending"}]
 
-    new_habit = Habit("Other Habit", Period.DAILY, _from_db=False)
+    new_habit = Habit("Other Habit", Period.DAILY)
     new_habit.habit_name = "Changed Habit"
 
     assert habit_repo_with_reg_path.find_by_habit_id(new_habit.habit_id) == expected_changed_habit_record

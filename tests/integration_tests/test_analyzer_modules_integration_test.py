@@ -22,7 +22,7 @@ def test_current_streak_integration(habit_repo_with_reg_path, record_analyzer, a
                        "Stretching Routine": 2}
 
     for habit_id, habit_name, period, start_date, status in all_habits_from_db:
-        habit = Habit(habit_name, period, start_date, habit_id, status,True)
+        habit = Habit.from_db(habit_id)
 
         streak = record_analyzer.calculate_streak(habit)
 
@@ -37,7 +37,7 @@ def test_completion_rate_integration(habit_repo_with_reg_path, record_analyzer, 
                      "Stretching Routine": 0.55}
 
     for habit_id, habit_name, period, start_date, status in all_habits_from_db:
-        habit = Habit(habit_name, period, start_date, habit_id, status,True)
+        habit = Habit.from_db(habit_id)
 
         rate = record_analyzer.calculate_completion_rate(habit)
 

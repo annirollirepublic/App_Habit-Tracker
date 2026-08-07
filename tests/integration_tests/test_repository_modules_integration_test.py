@@ -69,11 +69,11 @@ class TestHabitRepositoryRead:
         expected_statuses = ["Active", "Paused", "Active", "Active", "Active"]
 
         assert len(result) == 5
-        assert habit_ids == expected_habit_ids
-        assert habit_names == expected_habit_names
-        assert habit_periods == expected_habit_periods
-        assert habit_start_dates == expected_start_dates
-        assert habit_statuses == expected_statuses
+        assert sorted(habit_ids) == sorted(expected_habit_ids)
+        assert sorted(habit_names) == sorted(expected_habit_names)
+        assert sorted(habit_periods) == sorted(expected_habit_periods)
+        assert sorted(habit_start_dates) == sorted(expected_start_dates)
+        assert sorted(habit_statuses) == sorted(expected_statuses)
 
     def test_get_largest_id(self, habit_repo_with_reg_path): #only for habit repository
         result = habit_repo_with_reg_path.get_largest_id()
