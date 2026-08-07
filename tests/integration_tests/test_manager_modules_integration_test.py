@@ -12,6 +12,8 @@ pytestmark = pytest.mark.integration
 # Repository persistence is covered by repository integration tests.
 # This file should only contain selected smoke tests that verify TaskManager works with real repositories
 
+# TODO: Use caplog to capture log tests
+
 # Create task manager with connection to real database
 @pytest.fixture
 def task_manager(task_repo_with_temp_path, record_repo_with_temp_path):

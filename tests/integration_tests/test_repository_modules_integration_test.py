@@ -12,6 +12,8 @@ from tests.conftest import mock_habit
 pytestmark = pytest.mark.integration
 import datetime
 
+# TODO: Use caplog to capture log tests
+
 
 class TestHabitRepositoryIntegrationSetup:
 

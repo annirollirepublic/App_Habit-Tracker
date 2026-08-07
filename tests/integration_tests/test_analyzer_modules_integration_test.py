@@ -10,6 +10,8 @@ from source.app_logic.habit import Habit
 # This file only contains a thin smoke test to verify that RecordAnalyzer works
 # with records returned from the real repository/database layer.
 
+# TODO: Add test for habit_history
+
 # Create record analyzer with connection to real database
 @pytest.fixture
 def record_analyzer(record_repo_with_reg_path):
@@ -44,3 +46,6 @@ def test_completion_rate_integration(habit_repo_with_reg_path, record_analyzer, 
         # if record for habit was created, not for "Read 50 Pages"
         if habit.habit_name in expected_rate.keys():
             assert pytest.approx(expected_rate[habit.habit_name], rel=0.1) == rate
+
+def test_habit_history_integration(habit_repo_with_reg_path, record_analyzer, all_habits_from_db):
+    pass

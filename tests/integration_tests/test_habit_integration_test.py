@@ -16,6 +16,8 @@ pytestmark = pytest.mark.integration
 # RecordAnalyzer behavior is covered by record_analyzer_integration_test.py
 # This file should only contain selected smoke tests that verify habit works with real repositories
 
+# TODO: Use caplog to capture log tests
+
 def test_habit_creation_new_integration(habit_repo_with_reg_path, task_repo_with_reg_path):
     expected_habit_record = [{"habit_name": "Other Habit",
                              "habit_id": 9877,
