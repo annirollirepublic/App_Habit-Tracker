@@ -1,5 +1,6 @@
 # Import datetime for datetime handling / BUILT-IN
 from datetime import datetime
+from idlelib import history
 
 # Import exceptions and logging for activity screening and debugging / BUILT-IN
 from source.helpers.exceptions import CreationFromDatabaseError, DuplicateHabitError
@@ -382,4 +383,7 @@ class Habit:
             habit_history (list): List of all completion records for habit"""
 
         logger.info(f"APP: Request history for habit '{self.start_date}' (ID {self._habit_id}).")
-        return self.__record_analyzer.habit_history(self)
+        habit_history = self.__record_analyzer.habit_history(self)
+
+        for record in habit_history:
+            yield record
