@@ -185,7 +185,7 @@ def get_habit_for_action(actions: list[str]) -> dict | None:
         # Only paused habits
         items = get_active_habits()
     else:
-        # All habits for edit/delete/analytics
+        # All habits for edit/delete/analytics/history
         habit_repo = HabitRepository()
         items = habit_repo.browse_all()
 
@@ -209,7 +209,7 @@ def get_habit_for_action(actions: list[str]) -> dict | None:
         print(f"  [{index}] {name}{additional_info}")
 
     # Get selection
-    user_selection = input("\nEnter habit number: ").strip()
+    user_selection = prompt_input("\nEnter habit number", True)
     try:
         index = int(user_selection) - 1
         # Check if index is within bounds
@@ -217,10 +217,12 @@ def get_habit_for_action(actions: list[str]) -> dict | None:
             return items[index]
         print("Error: Invalid selection.")
         return None
-    # If user input is not a number, return None
-    except ValueError:
-        print("Error: Please enter a number.")
-        return None
+
+    except KeyboardInterrupt:
+        raise EscapeOperation()
+
+    except Exception:
+        raise
 
 #========== RENDER SHORTCUTS ==========
 
@@ -230,7 +232,8 @@ def render_shortcut_legend() -> None:
     print_separator("-")
     print("  [n] New habit   [c] Complete   [s] Skip")
     print("  [e] Edit        [d] Delete      [p] Pause")
-    print("  [r] Reactivate  [a] Analytics   [q] Quit")
+    print("  [r] Reactivate  [a] Analytics   [h] History")
+    print("  [q] Quit")
     print_separator("-")
 
 

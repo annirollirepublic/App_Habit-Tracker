@@ -20,6 +20,7 @@ SHORTCUT_MAP = {
     "p": ("Pause Habit", pause_habit),
     "r": ("Reactivate Habit", reactivate_habit),
     "a": ("View Analytics", view_analytics),
+    "h": ("History", view_history),
     "q": ("Quit", None),
 }
 

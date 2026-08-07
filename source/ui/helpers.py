@@ -10,8 +10,8 @@ from datetime import datetime
 # Import helper to handle conversion string to datetime and vice versa / USER-DEFINED
 from source.helpers.utils_datetime_helper import string_to_dt
 
-
-# Import re for pattern matching / BUILT-IN
+# Import readchar for keyboard input / BUILT-IN
+from readchar import readkey, key
 
 #========== OUTPUT METHODS ==========
 
@@ -27,33 +27,88 @@ def print_error(message: str):
     """Prints an error message and waits for Enter."""
     print_confirmation(message, success=False)
 
+#========== ESCAPE OPTION DEFINITION ==========
+
+class EscapeOperation(Exception):
+    """Raised when user input is ESC, to cancel the current operation."""
+    pass
+
 #========== USER INPUT METHODS ==========
 
 def prompt_input(prompt: str, required: bool = True):
-    """Generic input prompt. Returns None if empty and not required."""
-    # request input from user and strip whitespace
-    value = input(f"{prompt}: ").strip()
+    """Prompts for user input with ESC option.
+    Returns None if empty and not required."""
 
-    if not value:
-        # if no input was provided and prompt is not required, return None
-        # otherwise, prompt again > recursion
-        return None if not required else prompt_input(prompt, required=True)
-    # if value is not empty, return it
-    return value
+    print(f"{prompt}: ", end="", flush=True)
+
+    try:
+        chars = []
+        # loop until user enters a valid response
+        while True:
+            # Read single keystroke without waiting for ENTER, to fetch ESC in any case
+            char = readkey()
+
+            # ESC cancels the operation
+            if char == key.ESC:
+                raise EscapeOperation()
+
+            # ENTER terminates the input collection
+            elif char == key.ENTER:
+                break
+
+            # BACKSPACE removed last character
+            elif char == key.BACKSPACE:
+                if chars:
+                    # remove last element and move cursor back again
+                    chars.pop()
+                    print("\b \b", end="", flush=True)
+
+            # regular case - store and display character
+            else:
+                chars.append(char)
+                print(char, end="", flush=True)
+
+        # Blank line after pressing ENTER
+        print()
+
+        # Return the collected input
+        if required and not chars:
+            return None
+        elif not required and not chars:
+            return ""
+        return "".join(chars).strip()
+
+    # If user presses CTRL+C, exit the program
+    except KeyboardInterrupt:
+        raise EscapeOperation()
 
 
 def confirm(prompt: str = "Continue? (y/n): "):
-    """Asks for y/n confirmation. Returns True for 'y', False for 'n'."""
-    # loop until user enters a valid response
-    while True:
-        # request input from user and strip whitespace
-        value = input(prompt).strip().lower()
-        if value in ["y", "yes"]:
-            return True
-        elif value in ["n", "no"]:
-            return False
-        #else, the loop will continue
-        print("Please enter 'y' or 'n'.")
+    """Asks for y/n confirmation with ESC support.
+    Returns True for 'y', False for 'n'."""
+
+    print(prompt, end="", flush=True)
+
+    try:
+        # loop until user enters a valid response
+        while True:
+            # Read single keystroke without waiting for ENTER, to fetch ESC in any case
+            char = readkey()
+
+            # ESC cancels the operation
+            if char == key.ESC:
+                raise EscapeOperation()
+
+            # Handle 'y' and 'n' upper and lowercase
+            if char == ord("y") or char == ord("Y"):
+                return True
+            elif char == ord("n") or char == ord("N"):
+                return False
+
+            # Any other key is ignored and we wait for the next input
+
+    except KeyboardInterrupt:
+        raise EscapeOperation()
 
 
 def get_user_shortcut_overview():
@@ -62,7 +117,7 @@ def get_user_shortcut_overview():
 
     Returns lowercase character. Re-prompts if invalid.
     """
-    valid_shortcuts = "ncsedpraq"
+    valid_shortcuts = "ncsedprahq"
 
     while True:
         shortcut = input("> ").strip().lower()
@@ -73,43 +128,42 @@ def get_user_shortcut_overview():
         if len(shortcut) == 1 and shortcut in valid_shortcuts:
             return shortcut
 
-        print("Invalid shortcut. Enter one of: n, c, s, e, d, p, r, a, q")
+        print("Invalid shortcut. Enter one of: n, c, s, e, d, p, r, a, h, q")
 
 #========== VALIDATION METHODS ==========
 
 def validate_habit_name(name: str):
     """Validates habit name. Returns name if valid, None otherwise."""
-    # Currently no validation rules
+
+    # If no name is provided, return None
     if not name:
         return None
 
-    # Otherwise name unlikely no make any sense
+    # If name is too short, it is unlikely to make any sense
     if len(name) < 3:
         print("Error: Habit name must be at least 3 characters.")
         return None
 
-    # Otherwise displaying in the overview screen will cause errors
+    # If name is too long, displaying it in the overview screen will cause errors
     if len(name) > 50:
         print("Error: Habit name must not exceed 50 characters.")
         return None
 
-    # if re.search(r"[<>\"\\\/]", name):
-    #     print("Error: Habit name contains invalid characters.")
-    #     return None
-
+    # Valid names are names that pass all the above checks
     return name
 
 
 def validate_period_input(value: str):
     """Validates period input. Returns int value if valid, None otherwise."""
+
     # Currently only daily, weekly, bi-weekly or monthly habits are supported
     try:
-        days = int(value) # Input value will be a string
+        days = int(value) # Input value will be a string, must be a number
         if days not in [1, 7, 14, 30]:
             print("Error: Period must be 1, 7, 14, or 30 days.")
             return None
         return days
-    except ValueError:
+    except ValueError: # If not a number, error is raised
         print("Error: Please enter a valid number.")
         return None
 
