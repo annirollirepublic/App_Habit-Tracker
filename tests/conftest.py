@@ -21,17 +21,17 @@ def mock_dependencies(mocker):
     """Mocks all dependencies for the repositories, no database connection is required"""
 
     #Mocking Habit Repository
-    MockHabitRepo = mocker.patch("source.habit.HabitRepository")
+    MockHabitRepo = mocker.patch("source.app_logic.habit.HabitRepository")
     MockHabitRepo.return_value.duplicate_naming.return_value = 0
     MockHabitRepo.return_value.get_largest_id.return_value = 100
 
     #Mocking Task and Record Repository
-    MockTaskRepo = mocker.patch("source.habit.TaskRepository")
-    MockRecordRepo = mocker.patch("source.habit.CompletionRecordRepository")
+    MockTaskRepo = mocker.patch("source.app_logic.habit.TaskRepository")
+    MockRecordRepo = mocker.patch("source.app_logic.habit.CompletionRecordRepository")
 
     #Mocking Task Manager and Record Analyzer
-    MockTaskManager = mocker.patch("source.habit.TaskManager")
-    MockRecordAnalyzer = mocker.patch("source.habit.RecordAnalyzer")
+    MockTaskManager = mocker.patch("source.app_logic.habit.TaskManager")
+    MockRecordAnalyzer = mocker.patch("source.app_logic.habit.RecordAnalyzer")
 
     return {
         "habit_repo": MockHabitRepo.return_value,
