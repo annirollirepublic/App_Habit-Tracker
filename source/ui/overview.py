@@ -219,6 +219,7 @@ def get_habit_for_action(actions: list[str]) -> dict | None:
         return None
 
     except KeyboardInterrupt:
+        print()
         raise EscapeOperation()
 
     except Exception:

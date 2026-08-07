@@ -1,14 +1,11 @@
 # Import overview rendering and shortcut reading / USER-DEFINED
 from source.ui.overview import render_overview
-from source.ui.helpers import get_user_shortcut_overview
 
 # Import all actions / USER-DEFINED
 from source.ui.actions import *
 
 # Import OS for clearing the terminal / BUILT-IN
 import os
-
-# TODO : The must be a way to exit selected operations
 
 # Shortcut to action mapping
 SHORTCUT_MAP = {
@@ -34,6 +31,7 @@ def run() -> None:
     """Main application loop."""
     print("Welcome to Habit Tracker!\n")
 
+    # Main loop
     while True:
         clear_screen()
         render_overview()
@@ -45,12 +43,14 @@ def run() -> None:
             print("\nGoodbye!\n")
             break
 
-        # Dispatch to action
+        # Choose new screen in accordance to shortcut, mapped to action functions
         label, action_func = SHORTCUT_MAP.get(shortcut, ("Unknown", None))
 
+        # Re-render display if valid shortcut is chosen
         if action_func:
             clear_screen()
             action_func()
+        # If no valid shortcut is chosen, display error
         else:
             print("Invalid shortcut.")
 

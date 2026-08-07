@@ -36,7 +36,7 @@ class EscapeOperation(Exception):
 #========== USER INPUT METHODS ==========
 
 def prompt_input(prompt: str, required: bool = True):
-    """Prompts for user input with ESC option.
+    """Prompts for user input with the ESC option.
     Returns None if empty and not required."""
 
     print(f"{prompt}: ", end="", flush=True)
@@ -78,8 +78,9 @@ def prompt_input(prompt: str, required: bool = True):
             return ""
         return "".join(chars).strip()
 
-    # If user presses CTRL+C, exit the program
+    # If user presses CTRL+C, exit the program (similar to pressing ESC)
     except KeyboardInterrupt:
+        print()
         raise EscapeOperation()
 
 
@@ -105,20 +106,21 @@ def confirm(prompt: str = "Continue? (y/n): "):
             elif char == ord("n") or char == ord("N"):
                 return False
 
-            # Any other key is ignored and we wait for the next input
+            # Any other key is ignored, and we wait for the next input
 
+    # If user presses CTRL+C, exit the program (similar to pressing ESC)
     except KeyboardInterrupt:
+        print()
         raise EscapeOperation()
 
 
 def get_user_shortcut_overview():
-    """
-    Reads a single shortcut from user input.
-
+    """Reads a single shortcut from user input.
     Returns lowercase character. Re-prompts if invalid.
     """
     valid_shortcuts = "ncsedprahq"
 
+    # Request shortcut from user and validates against valid shortcuts
     while True:
         shortcut = input("> ").strip().lower()
 
@@ -128,6 +130,7 @@ def get_user_shortcut_overview():
         if len(shortcut) == 1 and shortcut in valid_shortcuts:
             return shortcut
 
+        # Output error message if shortcut is not valid
         print("Invalid shortcut. Enter one of: n, c, s, e, d, p, r, a, h, q")
 
 #========== VALIDATION METHODS ==========
@@ -182,19 +185,19 @@ def validate_date_string(date_str: str) -> datetime | None:
 
 #========== FORMATTING METHODS ==========
 
-
 def format_relative_date(due_date: str):
     """
     Returns (label, category) for relative date display in the start screen / overview screen.
     Categories: 'overdue', 'today', 'this_week', 'upcoming'
+    This categorization only applies to active habits. Paused habits are handled separately.
     """
-    # Paused habits are requested from habits so need to be handled separately
 
     # reference date is always today
     today = datetime.today().date()
     due_date = string_to_dt(due_date).date()
     delta_days = (due_date - today).days
 
+    # Check for delta and assign label and category accordingly
     if delta_days < 0:
         abs_delta = abs(delta_days)
         label = f"{abs_delta} day{'s' if abs_delta > 1 else ''} overdue"
@@ -210,34 +213,6 @@ def format_relative_date(due_date: str):
         category = "upcoming"
 
     return label, category
-
-
-def select_from_list(items: list[dict], prompt: str = "Enter number: ") -> int | None:
-    """Displays numbered list and returns selected index (0-based) or None."""
-    for index, item in enumerate(items, 1):
-        name = item.get("habit_name", item.get("name", "Unknown"))
-        extra = ""
-
-        # Add status info if present
-        if item.get("status"):
-            extra = f" ({item['status'].lower()})"
-
-        # Add overdue info if present
-        if item.get("relative_label"):
-            extra = f" ({item['relative_label']})"
-
-        print(f"  [{index}] {name}{extra}")
-
-    try:
-        choice = input(prompt).strip()
-        index = int(choice) - 1
-        if 0 <= index < len(items):
-            return index
-        print("Error: Invalid selection.")
-        return None
-    except ValueError:
-        print("Error: Please enter a number.")
-        return None
 
 
 def print_separator(char: str = "=", length: int = 50) -> None:
