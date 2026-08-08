@@ -16,12 +16,17 @@ It was developed as part of a project for the module **Object Oriented and Funct
 Clone repository
 ```
 git clone https://github.com/yourusername/habit-tracker.git
+```
+Navigate to project folder
+```
 cd habit-tracker
 ```
-Create virtual environment (recommended)
+Create virtual environment (recommended to install dependencies only for project)
 ```
 python -m venv venv
-
+```
+Activate virtual environnment
+```
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 ```
