@@ -89,6 +89,24 @@ Enter habit number:
 The user can cancel any operation at any point by pressing ```ESC``` or ```Ctrl + C```.
 By cancelling the operation, the user will be re-directed to the main menu.
 
+## Structure
+```
+App_Habit-Tracker/
+├── source/
+│   ├── app_logic/        # Business logic (Habit, TaskManager, RecordAnalyzer)
+│   ├── helpers/          # Utilities (enums, exceptions, datetime helpers)
+│   ├── repository/       # Repository implementations (database access)
+│   ├── ui/               # Terminal user interface
+│   └── config.py         # Configuration (logging, database path)
+├── tests/
+│   ├── unittests/        # Unit tests with mocked dependencies
+│   └── integration/      # Integration tests with real database
+├── README.md
+├── requirements.txt
+├── habit-tracker.log     # Log file for debugging
+└── habit-tracker.db      # SQLite database (auto-created on first run)
+```
+
 ## Tech Stack
 - **Language**: Python 3.11+
 - **Database**: SQLite (local file persistence)
