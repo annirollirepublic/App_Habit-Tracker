@@ -27,10 +27,16 @@ The start menu displays the status of all open tasks and paused habits. This vie
 ==================================================
 
 OVERDUE
-  [1] Weekly Review                  — 20 days overdue
-  [2] Bi-weekly Gym                  — 11 days overdue
-  [3] Read Book                      — 22 days overdue
-  [4] Morning Run                    — 18 days overdue
+  [1] Read Book                      — 1 day overdue
+
+TODAY
+  [1] Morning Run                    — today
+
+THIS WEEK
+  [1] Weekly Review                  — in 1 day
+
+UPCOMING
+  [1] Bi-weekly Gym                  — in 10 days
 
 PAUSED
   [1] Monthly Budget                 — original start_date 2026-01-01
