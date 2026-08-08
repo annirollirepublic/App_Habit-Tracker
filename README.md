@@ -16,10 +16,63 @@ It was developed as part of a project for the module **Object Oriented and Funct
 __to be added__
 
 ## Usage
-__to be added__
+Navigate to the downloaded folder in your terminal and run the application with
+```
+python -m source.ui.app
+```
+The start menu displays the status of all open tasks and paused habits. This view is the starting point for all operations.
+```
+==================================================
+                  TASK OVERVIEW                   
+==================================================
+
+OVERDUE
+  [1] Weekly Review                  — 20 days overdue
+  [2] Bi-weekly Gym                  — 11 days overdue
+  [3] Read Book                      — 22 days overdue
+  [4] Morning Run                    — 18 days overdue
+
+PAUSED
+  [1] Monthly Budget                 — original start_date 2026-01-01
+```
+Use displayed shortcuts to fulfill operations within the application. Use ```shortcut + Enter```
+```
+[n] New habit      # Create a new habit
+[c] Complete       # Check-off tasks that user has successfully completed (streak increases)
+[s] Skip           # Check-off tasks that user has wants to skip once (breaks streak)
+[e] Edit           # Edit habit information: name, start_date, period
+[d] Delete         # Delete habit, as well as all corresponding tasks and records
+[p] Pause          # Temporarily disable habits without losing history
+[r] Reactivate     # Ractivate habits that have been paused
+[a] Analytics      # Show analytics - streaks, completion rates, and on-time performance
+[h] History        # Access all past records with information on the completion status and whether it was overdue
+[q] Quit           # Quit application
+```
+The habits for the operation, will be filtered in accordance to the selected use case. 
+To select a habit, the user also applies the shortcut navigation.
+```
+====================== EXAMPLE ==========================
+
+--- Edit Habit ---
+
+Available Habits:
+  [1] Morning Run (active)
+  [2] Weekly Review (active)
+  [3] Bi-weekly Gym (active)
+  [4] Monthly Budget (paused)
+  [5] Read Book (active)
+
+Enter habit number: 
+```
+
+The user can cancel any operation at any point by pressing ```ESC``` or ```Ctrl + C```.
+By cancelling the operation, the user will be re-directed to the main menu.
 
 ## Tech Stack
-__to be added__
+- **Language**: Python 3.11+
+- **Database**: SQLite (local file persistence)
+- **Testing**: pytest (unit + integration tests)
+- **Architecture**: Repository Pattern, Layered Architecture, Dependency Injection
 
 ## Requirements
 __to be added__
