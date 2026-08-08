@@ -90,7 +90,7 @@ Available Habits:
 Enter habit number: 
 ```
 ### Cancel Operations
-The user can cancel any operation at any point by pressing ```ESC``` or ```Ctrl + C```.
+The user can cancel any operation at any point by pressing `ESC` or `Ctrl + C`.
 By cancelling the operation, the user will be re-directed to the main menu.
 
 ## Structure
@@ -118,4 +118,22 @@ App_Habit-Tracker/
 - **Architecture**: Repository Pattern, Layered Architecture, Dependency Injection
 
 ## Requirements
-__to be added__
+For requirements please see `requirements.txt`
+
+## Testing
+Run all tests
+```
+pytest
+```
+Run specific tests
+```
+pytest -m unit         # Unit tests only
+pytest -m integration  # Integration tests only
+```
+
+## Author
+Ann-Christin Rolofs
+
+IU International University of Applied Sciences
+
+DLBDSOOFPP01 — Object Oriented and Functional Programming with Python
