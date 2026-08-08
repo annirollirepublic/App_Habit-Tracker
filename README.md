@@ -36,6 +36,9 @@ pip install -r requirements.txt
 ```
 
 ## Usage
+- **Windows**: Use PowerShell or Command Prompt for terminal
+- **Mac/Linux**: Use standard terminal
+
 ###  Launch
 Navigate to the downloaded folder in your terminal and run the application with
 ```
