@@ -31,10 +31,12 @@ pip install -r requirements.txt
 ```
 
 ## Usage
+###  Launch
 Navigate to the downloaded folder in your terminal and run the application with
 ```
 python -m source.ui.app
 ```
+### Main menu
 The start menu displays the status of all open tasks and paused habits. This view is the starting point for all operations.
 ```
 ==================================================
@@ -56,6 +58,7 @@ UPCOMING
 PAUSED
   [1] Monthly Budget                 — original start_date 2026-01-01
 ```
+### Navigation
 Use displayed shortcuts to fulfill operations within the application. Use ```shortcut + Enter```
 ```
 [n] New habit      # Create a new habit
@@ -69,6 +72,7 @@ Use displayed shortcuts to fulfill operations within the application. Use ```sho
 [h] History        # Access all past records with information on the completion status and whether it was overdue
 [q] Quit           # Quit application
 ```
+### Habit Selection
 The habits for the operation, will be filtered in accordance to the selected use case. 
 To select a habit, the user also applies the shortcut navigation.
 ```
@@ -85,7 +89,7 @@ Available Habits:
 
 Enter habit number: 
 ```
-
+### Cancel Operations
 The user can cancel any operation at any point by pressing ```ESC``` or ```Ctrl + C```.
 By cancelling the operation, the user will be re-directed to the main menu.
 
