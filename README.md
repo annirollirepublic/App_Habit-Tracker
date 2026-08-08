@@ -13,7 +13,22 @@ It was developed as part of a project for the module **Object Oriented and Funct
 - **History**: Users can access all past records with information on the completion status and whether it was overdue
 
 ## Installation 
-__to be added__
+Clone repository
+```
+git clone https://github.com/yourusername/habit-tracker.git
+cd habit-tracker
+```
+Create virtual environment (recommended)
+```
+python -m venv venv
+
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+```
+Install dependencies
+```
+pip install -r requirements.txt
+```
 
 ## Usage
 Navigate to the downloaded folder in your terminal and run the application with
