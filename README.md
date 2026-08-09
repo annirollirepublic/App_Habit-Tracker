@@ -172,8 +172,9 @@ App_Habit-Tracker/
 │   └── integration/      # Integration tests with real database
 ├── README.md
 ├── requirements.txt
-├── habit-tracker.log     # Log file for debugging
-└── habit-tracker.db      # SQLite database (auto-created on first run)
+├── habit-tracker.log          # Log file for debugging
+├── habit-tracker_test.db      # SQLite database for testing purposes only
+└── habit-tracker-data.db      # SQLite database (auto-created on first run)
 ```
 
 ## Tech Stack
