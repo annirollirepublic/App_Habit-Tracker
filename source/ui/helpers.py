@@ -101,9 +101,9 @@ def confirm(prompt: str = "Continue? (y/n): "):
                 raise EscapeOperation()
 
             # Handle 'y' and 'n' upper and lowercase
-            if char == ord("y") or char == ord("Y"):
+            if char in ("y", "Y"):
                 return True
-            elif char == ord("n") or char == ord("N"):
+            elif char in ("n", "N"):
                 return False
 
             # Any other key is ignored, and we wait for the next input
