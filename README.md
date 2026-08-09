@@ -34,7 +34,7 @@ git clone https://github.com/annirollirepublic/App_Habit-Tracker.git
 cd App_Habit-Tracker
 ```
 
-#### 4. Create virtual environment (recommended to install dependencies only for project
+#### 4. Create virtual environment (recommended to install dependencies only for project)
 
 _Linux/Mac_
 ```
