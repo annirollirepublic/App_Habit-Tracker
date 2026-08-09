@@ -1,27 +1,42 @@
+# Import pytest to mark tests as unit tests
+import pytest
+pytestmark = pytest.mark.unit
+
+# Import necessary modules from source
 from source.helpers.utils_datetime_helper import string_to_dt
 from source.helpers.enums import CompletionStatus
 
-import pytest
-pytestmark = pytest.mark.unit
+# Import datetime for datetime calculations
 from datetime import timedelta
+
 
 class TestTaskManagerInitialization:
 
     def test_create_task_new(self, mock_dependencies, mock_manager, mock_habit):
+        """Test that a new task is created when no task exists for the habit."""
+
+        # Mock habit_repo.find_by_habit_id to return None, indicating no task exists
         mock_dependencies["task_repo"].find_by_habit_id.return_value = None
 
+        # Create a new task using the mock habit
         result = mock_manager.create_first_task(mock_habit)
 
+        # Check that the task was created correctly in alignment with the mock habit
         assert result.habit_name == mock_habit.habit_name
         assert result.habit_id == mock_habit.habit_id
         assert result.due_date == mock_habit.start_date
         assert result.completion_status.value == CompletionStatus.PENDING.value
 
     def test_create_task_from_db(self, mock_dependencies, mock_manager, mock_habit, sample_task):
+        """Test that a task is created from the database when one exists for the habit."""
+
+        # Mock habit_repo.find_by_habit_id to return a sample task
         mock_dependencies["task_repo"].find_by_habit_id.return_value = sample_task
 
+        # Create a new task using the mock habit
         result = mock_manager.create_first_task(mock_habit)
 
+        # Check that task is still equal to the sample task
         assert result.habit_name == sample_task["habit_name"]
         assert result.habit_id == sample_task["habit_id"]
         assert result.due_date == string_to_dt(sample_task["due_date"])
@@ -30,8 +45,13 @@ class TestTaskManagerInitialization:
 class TestTaskManagerInteraction:
 
     def test_complete_task(self, mock_manager, mock_habit, mock_dependencies, sample_task, mock_task):
+        """Test that a task is completed and a record is created when the task is marked as complete."""
+
+        # Mock habit_repo.find_by_habit_id to return a sample task
         mock_manager.task = mock_task
         mock_dependencies["task_repo"].find_by_habit_id.return_value = sample_task
+
+        # Complete the task
         result = mock_manager.complete_current_task(mock_habit)
 
         # Check record repository was called for record creation
@@ -47,8 +67,13 @@ class TestTaskManagerInteraction:
         assert result.due_date == string_to_dt(sample_task["due_date"]) + timedelta(days=mock_habit.period.value)
 
     def test_skip_task(self, mock_manager, mock_habit, mock_dependencies, sample_task, mock_task):
+        """Test that a task is skipped and a record is created when the task is marked as skipped."""
+
+        # Mock habit_repo.find_by_habit_id to return a sample task
         mock_manager.task = mock_task
         mock_dependencies["task_repo"].find_by_habit_id.return_value = sample_task
+
+        # Skip the task
         result = mock_manager.skip_current_task(mock_habit)
 
         # Check record repository was called for record creation
@@ -64,7 +89,12 @@ class TestTaskManagerInteraction:
         assert result.due_date == string_to_dt(sample_task["due_date"]) + timedelta(days=mock_habit.period.value)
 
     def test_delete_task(self, mock_manager, mock_dependencies, mock_task):
+        """Test that a task is deleted when the task is marked as deleted."""
+
+        # Create a new task using the mock task
         mock_manager.task = mock_task
+
+        # Delete the task
         mock_manager.delete_current_task()
 
         # Check whether task repository was called for deletion of old an creation of new task
