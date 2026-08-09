@@ -2,7 +2,7 @@
 import logging
 
 # Set logging configuration
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG,
                     filename="./habit-tracker.log",
                     filemode="w",
                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
