@@ -18,7 +18,7 @@ from source.repository.repository_modules import TaskRepository, CompletionRecor
 
 # Set logger setup
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 #========== SERVICES CLASSES ==========

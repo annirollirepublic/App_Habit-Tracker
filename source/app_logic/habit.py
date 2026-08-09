@@ -25,7 +25,7 @@ from source.repository.repository_modules import HabitRepository, TaskRepository
 
 # Set logger setup
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 class Habit:
     """

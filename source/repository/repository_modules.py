@@ -24,7 +24,7 @@ from source.app_logic.task import Task
 
 # Set logging setup
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 # ========== REPOSITORY CLASSES ==========
 
