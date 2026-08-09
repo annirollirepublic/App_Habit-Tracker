@@ -85,9 +85,22 @@ pip install -r requirements.txt
 
 ###  Launch
 Navigate to the downloaded folder in your terminal and run the application with
+
+_Linux/Mac_
 ```
+./.venv/bin/python -m source.ui.app.py
+
+# If virtual environment is activated already
 python -m source.ui.app
 ```
+_Windows_
+```
+.\.venv\Scripts\python.exe -m source.ui.app.py
+
+# If virtual environment is activated already
+python -m source.ui.app
+```
+
 ### Main menu
 The start menu displays the status of all open tasks and paused habits. This view is the starting point for all operations.
 ```
@@ -174,7 +187,18 @@ For requirements please see `requirements.txt`
 
 ## Testing
 Run all tests
+_Linux/Mac_
 ```
+./.venv/bin/python -m pytest
+
+# If virtual environment is activated already
+pytest
+```
+_Windows_
+```
+.\.venv\Scripts\python.exe -m pytest
+
+# If virtual environment is activated already
 pytest
 ```
 Run specific tests
