@@ -1,16 +1,18 @@
 # Test Connection Repositories <> Database
+# Import pytest to mark tests as integration tests
+import pytest
+pytestmark = pytest.mark.integration
+
+# Import mock to mock dependencies
 from unittest.mock import Mock
 
+# Import the necessary modules from source
 from source.helpers.enums import Period
 from source.app_logic.habit import Habit
-
-import pytest
-
 from source.helpers.utils_datetime_helper import dt_to_string
-from tests.conftest import mock_habit
 
-pytestmark = pytest.mark.integration
-import datetime
+# Import datetime for datetime calculations
+from datetime import datetime, timedelta
 
 
 class TestHabitRepositoryIntegrationSetup:

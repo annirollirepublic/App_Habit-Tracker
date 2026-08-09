@@ -1,8 +1,9 @@
 # Import logging module to test logging
 import logging
 
-# Import pytest for test fixtures
+# Import pytest to mark tests as integration tests
 import pytest
+pytestmark = pytest.mark.integration
 
 # Import necessary modules from source
 from source.helpers.exceptions import DuplicateHabitError

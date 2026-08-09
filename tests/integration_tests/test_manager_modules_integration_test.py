@@ -1,6 +1,6 @@
 # Test Connection TaskManager <> Repositories <> Database
 
-# Import pytest for test fixtures
+# Import pytest to mark tests as integration tests
 import pytest
 pytestmark = pytest.mark.integration
 

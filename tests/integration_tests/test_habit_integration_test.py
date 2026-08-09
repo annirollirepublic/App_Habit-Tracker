@@ -1,4 +1,7 @@
 # Test Connection Habits <> Repositories, TaskManager, RecordAnalyzer <> Database
+# Import pytest to mark tests as integration tests
+import pytest
+pytestmark = pytest.mark.integration
 
 # Import datetime for datetime calculations
 from datetime import datetime, timedelta
