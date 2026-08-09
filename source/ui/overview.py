@@ -175,7 +175,7 @@ def get_habit_for_action(actions: list[str]) -> dict | None:
         Selected habit dict, or None if canceled/invalid
     """
     # Determine which habits are relevant for this action
-    if actions == ["complete", "skip"]:
+    if "complete" in actions or "skip" in actions:
         # Only active tasks
         items = get_active_tasks()
     elif actions == ["reactivate"]:
