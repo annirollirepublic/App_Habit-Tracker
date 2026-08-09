@@ -136,6 +136,7 @@ class Habit:
 
         # Check whether input is duplicate - Creation will be blocked if is duplicate
         if self.__habit_repo.duplicate_naming(self) > 0:
+            logger.error(f"APP: Duplicate habit name '{self._habit_name}' - creation blocked.")
             raise DuplicateHabitError(habit_name=self._habit_name)
 
         # If a duplicate check is passed, save to the repository and pass to the manager
