@@ -131,16 +131,17 @@ class Habit:
 
         logger.info(f"APP: Creating Habit object '{self.habit_name}' (ID {self._habit_id}).")
 
-        # Create habit repository interface
-        self.__habit_repo = HabitRepository()
+        # Only for new habits
+        if self._habit_id is None:
+            # Create habit repository interface
+            self.__habit_repo = HabitRepository()
+            # Check whether input is duplicate - Creation will be blocked if is duplicate
+            if self.__habit_repo.duplicate_naming(self) > 0:
+                logger.error(f"APP: Duplicate habit name '{self._habit_name}' - creation blocked.")
+                raise DuplicateHabitError(habit_name=self._habit_name)
 
-        # Check whether input is duplicate - Creation will be blocked if is duplicate
-        if self.__habit_repo.duplicate_naming(self) > 0:
-            logger.error(f"APP: Duplicate habit name '{self._habit_name}' - creation blocked.")
-            raise DuplicateHabitError(habit_name=self._habit_name)
-
-        # If a duplicate check is passed, save to the repository and pass to the manager
-        self.__save_habit()
+            # If a duplicate check is passed, save to the repository and pass to the manager
+            self.__save_habit()
 
     @property
     def habit_name(self):
@@ -242,6 +243,7 @@ class Habit:
 
         # Missing the check whether habit has been paused before.
         self._status = Status.ACTIVE
+        self.start_date = datetime.today()
         logger.info(f"APP: Reactivating Habit '{self.habit_name}' (ID {self._habit_id}).")
         self.__habit_repo.update(self)
         # Create the first task entry
@@ -310,7 +312,7 @@ class Habit:
         -> Calls task manager to update the due_date of the corresponding task in the table
 
         Args:
-            value (Period): New habit period
+            value (datetime): New start_date
 
         Returns:
             None
@@ -331,7 +333,7 @@ class Habit:
         Returns:
             streak (Float): current streak"""
 
-        logger.info(f"APP: Calculating current strike for habit '{self.start_date}' (ID {self._habit_id}).")
+        logger.info(f"APP: Calculating current strike for habit '{self.habit_name}' (ID {self._habit_id}).")
         return self.__record_analyzer.calculate_streak(self)
 
     def calculate_longest_streak(self):

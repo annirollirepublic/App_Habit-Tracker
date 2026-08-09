@@ -158,7 +158,7 @@ def render_overview() -> None:
         for index, habit in enumerate(paused_habits, 1):
             name = habit["habit_name"]
             label = habit["start_date"]
-            print(f"  [{index}] {name:<30} — original start_date {label}")
+            print(f"  [{index}] {name:<30}")
 
     # Render shortcut legend
     render_shortcut_legend()

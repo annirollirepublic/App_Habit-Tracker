@@ -1,0 +1,18 @@
+2026-08-09 18:56:37,084 - source.repository.repository_modules - INFO - SQL: Checking for open connection
+2026-08-09 18:56:37,084 - source.repository.repository_modules - INFO - SQL: No open connection available. Creating new connection
+2026-08-09 18:56:37,087 - source.repository.repository_modules - INFO - SQL: Setting up scheme for task table
+2026-08-09 18:56:37,089 - source.repository.repository_modules - DEBUG - SQL: Scheme for task table set up successfully
+2026-08-09 18:56:37,089 - source.repository.repository_modules - INFO - SQL: Browsing all tasks
+2026-08-09 18:56:37,091 - source.repository.repository_modules - INFO - SQL: Fetching data from task table
+2026-08-09 18:56:37,091 - source.repository.repository_modules - INFO - SQL: Checking for open connection
+2026-08-09 18:56:37,091 - source.repository.repository_modules - INFO - SQL: No open connection available. Creating new connection
+2026-08-09 18:56:37,093 - source.repository.repository_modules - INFO - SQL: Setting up scheme for habit table
+2026-08-09 18:56:37,094 - source.repository.repository_modules - DEBUG - SQL: Scheme for habit table set up successfully
+2026-08-09 18:56:37,095 - source.repository.repository_modules - INFO - SQL: Browsing all habits
+2026-08-09 18:56:37,095 - source.repository.repository_modules - INFO - SQL: Fetching data from habit table
+2026-08-09 18:56:37,122 - source.repository.repository_modules - INFO - SQL: Checking for open connection
+2026-08-09 18:56:37,122 - source.repository.repository_modules - INFO - SQL: No open connection available. Creating new connection
+2026-08-09 18:56:37,124 - source.repository.repository_modules - INFO - SQL: Setting up scheme for habit table
+2026-08-09 18:56:37,126 - source.repository.repository_modules - DEBUG - SQL: Scheme for habit table set up successfully
+2026-08-09 18:56:37,126 - source.repository.repository_modules - INFO - SQL: Browsing all habits
+2026-08-09 18:56:37,127 - source.repository.repository_modules - INFO - SQL: Fetching data from habit table
