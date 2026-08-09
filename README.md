@@ -13,24 +13,68 @@ It was developed as part of a project for the module **Object Oriented and Funct
 - **History**: Users can access all past records with information on the completion status and whether it was overdue
 
 ## Installation 
-Clone repository
+
+### Requirements
+- **Python 3.11 or higher** (developed and tested with Python 3.11+)
+- Operating System: Windows, macOS, or Linux
+
+- **Windows**: Use PowerShell
+- **Mac/Linux**: Use standard terminal
+  
+### Steps
+#### 1. Navigate to the folder, where you want to install the application within the terminal.
+   
+#### 2. Clone repository
 ```
-git clone https://github.com/yourusername/habit-tracker.git
+git clone https://github.com/annirollirepublic/App_Habit-Tracker.git
 ```
-Navigate to project folder
+
+#### 3. Navigate to project folder
 ```
-cd habit-tracker
+cd App_Habit-Tracker
 ```
-Create virtual environment (recommended to install dependencies only for project)
+
+#### 4. Create virtual environment (recommended to install dependencies only for project
+
+_Linux/Mac_
 ```
-python -m venv venv
+python3 -m venv .venv
 ```
-Activate virtual environnment
+
+  _Windows_
 ```
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
+python -m venv .venv
+
+# Alternatively in case python cannot be found, try
+py -m venv .venv
 ```
-Install dependencies
+
+#### 5. Activate virtual environnment
+
+_Linux/Mac_
+```
+source .venv/bin/activate
+```
+
+_Windows_
+```
+.venv\Scripts\activate.bat
+```
+If .bat does not work, try
+```
+.venv\Scripts\activate.ps1
+
+# If script activation is blocked, try first and re-try activation
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+#### 6. Install dependencies
+
+_Linux/Mac_
+```
+pip3 install -r requirements.txt
+```
+_Windows_
 ```
 pip install -r requirements.txt
 ```
