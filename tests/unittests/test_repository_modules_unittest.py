@@ -8,7 +8,7 @@ from unittest.mock import Mock
 from source.repository.repository_modules import HabitRepository
 
 # Most of the repository functions are strongly coupled with the database, so they cannot be tested in isolation.
-# Therefore, they cannot be tested in an unittest, but must be tested in an integration test instead.
+# Therefore, they cannot be tested in an unittest but must be tested in an integration test instead.
 # See test_integration.py for detailes integration testing.
 
 # Mock the habit repository
