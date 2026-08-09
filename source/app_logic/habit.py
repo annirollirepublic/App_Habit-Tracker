@@ -242,8 +242,8 @@ class Habit:
         """
 
         # Missing the check whether habit has been paused before.
-        self._status = Status.ACTIVE
         self.start_date = datetime.today()
+        self._status = Status.ACTIVE
         logger.info(f"APP: Reactivating Habit '{self.habit_name}' (ID {self._habit_id}).")
         self.__habit_repo.update(self)
         # Create the first task entry
