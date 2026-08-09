@@ -208,10 +208,3 @@ Run specific tests
 pytest -m unit         # Unit tests only
 pytest -m integration  # Integration tests only
 ```
-
-## Author
-Ann-Christin Rolofs
-
-IU International University of Applied Sciences
-
-DLBDSOOFPP01 — Object Oriented and Functional Programming with Python
