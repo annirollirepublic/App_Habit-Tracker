@@ -187,6 +187,7 @@ For requirements please see `requirements.txt`
 
 ## Testing
 Run all tests
+
 _Linux/Mac_
 ```
 ./.venv/bin/python -m pytest
