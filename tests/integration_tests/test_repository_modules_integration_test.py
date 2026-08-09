@@ -148,7 +148,7 @@ class TestHabitRepositoryWrite:
         # Change the habit name and update the habit record
         mock_habit.habit_name = "Changed Habit Name"
         mock_habit.period = Period.DAILY
-        mock_habit.start_date = datetime.datetime.today()
+        mock_habit.start_date = datetime.today()
         habit_repo_with_temp_path.update(mock_habit)
 
         # Search for the updated habit in the database
@@ -158,7 +158,7 @@ class TestHabitRepositoryWrite:
         assert len(result) == 1
         assert result[0]["habit_id"] == mock_habit.habit_id #ID will not change
         assert result[0]["habit_name"] == "Changed Habit Name"
-        assert result[0]["start_date"] == dt_to_string(datetime.datetime.today())
+        assert result[0]["start_date"] == dt_to_string(datetime.today())
         assert result[0]["period"] == Period.DAILY.value
         assert result[0]["status"] == mock_habit.status.value
 
@@ -288,7 +288,7 @@ class TestTaskRepositoryWrite:
 
         # Change the task name and update the task record
         mock_task.habit_name = "Changed Habit Name"
-        mock_task.due_date = datetime.datetime.today()
+        mock_task.due_date = datetime.today()
         task_repo_with_temp_path.update(mock_task)
 
         # Search for the updated task in the database
@@ -298,7 +298,7 @@ class TestTaskRepositoryWrite:
         assert len(result) == 1
         assert result[0]["habit_id"] == mock_task.habit_id #ID will not change
         assert result[0]["habit_name"] == "Changed Habit Name"
-        assert result[0]["due_date"] == dt_to_string(datetime.datetime.today())
+        assert result[0]["due_date"] == dt_to_string(datetime.today())
         assert result[0]["is_overdue"] == False
         assert result[0]["completion_status"] == mock_task.completion_status.value
 

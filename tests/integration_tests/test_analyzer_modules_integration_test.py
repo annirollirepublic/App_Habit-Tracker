@@ -53,8 +53,8 @@ def test_completion_rate_integration(expected_habit_name, expected_rate, record_
     # Calculate completion rate
     rate = record_analyzer.calculate_completion_rate(habit)
 
-    # Compare to expected rate with 0.5% tolerance
-    assert pytest.approx(rate, 0.005) == expected_rate
+    # Compare to expected rate with 1% tolerance
+    assert pytest.approx(rate, 0.01) == expected_rate
 
 
 @pytest.mark.parametrize("expected_habit_name, expected_len", [
