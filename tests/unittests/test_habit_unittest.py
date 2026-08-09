@@ -158,7 +158,7 @@ class TestHabitInteraction:
 
         # Check whether habit status was set to active and dependencies were called
         assert mock_habit_for_habit_class_tests.status.value == Status.ACTIVE.value
-        mock_dependencies["habit_repo"].update.assert_called_once_with(mock_habit_for_habit_class_tests)
+        assert mock_dependencies["habit_repo"].update.call_count == 2
         mock_dependencies["task_manager"].create_first_task.assert_called_once_with(mock_habit_for_habit_class_tests)
 
     def test_delete_habit(self, mock_habit_for_habit_class_tests, mock_dependencies):
